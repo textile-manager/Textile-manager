@@ -6,8 +6,8 @@
 // ============================================================
 
 window.TM_CONFIG = {
-  SUPABASE_URL: 'ВСТАВЬТЕ_СЮДА_URL',       // напр. https://abcdefgh.supabase.co
-  SUPABASE_ANON_KEY: 'ВСТАВЬТЕ_СЮДА_КЛЮЧ', // начинается с sb_publishable_...
+  SUPABASE_URL: 'https://vphmucupsnsutfxgucta.supabase.co',       // напр. https://abcdefgh.supabase.co
+  SUPABASE_ANON_KEY: 'sb_publishable_4VqoSUqg-4d998aK8T3qGw_mRiqroID', // начинается с sb_publishable_...
                                            // (на старых проектах — длинная строка eyJ...)
 
   // Домен для служебных адресов входа: сотрудники вводят имя и PIN,
