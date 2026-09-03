@@ -1,0 +1,2695 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Textile Manager</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Prata&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap');
+
+:root{
+  --bg:#EEEFEA; --card:#FFFFFF; --ink:#26251F; --muted:#6E6C63; --line:#DCDDD5;
+  --st-gray:#9E9E9E; --st-red:#E53935; --st-orange:#FB8C00; --st-yellow:#FBC02D;
+  --st-cyan:#4FC3F7; --st-blue:#1565C0; --st-lgreen:#81C784; --st-dgreen:#2E7D32;
+  --st-white:#FFFFFF; --st-cancel:#616161; --st-wine:#6D1B36;
+  --r:14px;
+}
+*{box-sizing:border-box; margin:0;}
+html{-webkit-text-size-adjust:100%;}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:'IBM Plex Sans', system-ui, sans-serif;
+  font-size:16px; line-height:1.45;
+  padding-bottom:96px;
+}
+.mono{font-family:'IBM Plex Mono', ui-monospace, monospace;}
+
+header{
+  position:sticky; top:0; z-index:20; background:var(--bg);
+  border-bottom:1px solid var(--line); padding:10px 16px 8px;
+}
+.brandrow{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+h1{font-family:'Prata', Georgia, serif; font-weight:400; font-size:21px; letter-spacing:.01em;}
+h1 span{color:var(--muted); font-family:'IBM Plex Sans'; font-size:11px; letter-spacing:.08em; text-transform:uppercase; margin-left:6px;}
+.hright{display:flex; align-items:center; gap:8px;}
+.undobtn{
+  width:44px; height:44px; border-radius:12px; border:1px solid var(--line); background:var(--card);
+  font-size:20px; cursor:pointer; color:var(--ink);
+}
+.undobtn:disabled{opacity:.35; cursor:default;}
+.userbox{display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted);}
+.syncbadge{font-size:12px; color:var(--muted); white-space:nowrap;}
+.syncbadge.err{color:#B3261E; font-weight:600;}
+.idlebar{
+  display:none; position:fixed; left:12px; right:12px; top:12px; z-index:60;
+  gap:10px; align-items:center; justify-content:center; flex-wrap:wrap;
+  padding:12px 14px; border-radius:var(--r); background:#26251F; color:#fff;
+  font-size:14px; box-shadow:0 6px 20px rgba(38,37,31,.35);
+}
+.idlebar.on{display:flex;}
+.idlebar button{
+  font:inherit; font-size:14px; font-weight:600; min-height:38px; padding:0 16px;
+  border:0; border-radius:9px; background:#fff; color:#26251F; cursor:pointer;
+}
+.userbox select{
+  font:inherit; color:var(--ink); background:transparent; border:none; border-bottom:1px dashed var(--muted);
+  padding:4px 2px; max-width:140px;
+}
+.tabs{display:flex; gap:6px; margin-top:10px; background:#E3E4DC; padding:4px; border-radius:12px;}
+.tab{
+  flex:1; font:inherit; font-size:14px; font-weight:600; min-height:40px; border:none; border-radius:9px;
+  background:transparent; color:var(--muted); cursor:pointer;
+}
+.tab[aria-selected="true"]{background:var(--card); color:var(--ink); box-shadow:0 1px 3px rgba(38,37,31,.12);}
+.searchrow{display:flex; gap:8px; margin-top:10px;}
+.searchrow input{
+  flex:1; font:inherit; padding:12px 14px; border:1px solid var(--line); border-radius:var(--r);
+  background:var(--card); min-height:44px;
+}
+.fbtn{
+  flex:0 0 auto; font:inherit; font-size:14px; padding:12px 14px; min-height:44px;
+  border:1px solid var(--line); border-radius:var(--r); background:var(--card);
+  color:var(--ink); cursor:pointer; display:flex; align-items:center; gap:6px; white-space:nowrap;
+}
+.fbtn[aria-expanded="true"]{background:var(--ink); color:#fff; border-color:var(--ink);}
+.fcount{
+  display:none; min-width:19px; height:19px; padding:0 5px; border-radius:999px;
+  background:var(--accent,#B26A00); color:#fff; font-size:12px; line-height:19px; text-align:center;
+}
+.fcount.on{display:inline-block;}
+.fbtn[aria-expanded="true"] .fcount{background:#fff; color:var(--ink);}
+.moderow{display:none; gap:0; margin-top:10px; border:1px solid var(--line); border-radius:var(--r); overflow:hidden;}
+.moderow.on{display:flex;}
+.mbtn{
+  flex:1; font:inherit; font-size:14px; padding:10px 8px; min-height:42px;
+  background:var(--card); color:var(--muted); border:0; cursor:pointer;
+}
+.mbtn[aria-pressed="true"]{background:var(--ink); color:#fff; font-weight:600;}
+.mbtn+.mbtn{border-left:1px solid var(--line);}
+/* блоки режима «По швеям» */
+.seamhead{
+  display:flex; align-items:baseline; gap:8px; margin:18px 0 10px;
+  padding-bottom:6px; border-bottom:2px solid var(--swh,#9E9E9E);
+}
+.seamhead .nm{font-size:17px; font-weight:700; color:var(--swh,#26251F);}
+.seamhead .cnt{margin-left:auto; font-size:13px; color:var(--muted);}
+.seamhead.nobody .nm{color:#B26A00;}
+.fpanel{
+  display:none; max-width:680px; margin:0 auto; padding:12px 16px 14px;
+  border-bottom:1px solid var(--line);
+}
+.fpanel.open{display:block;}
+.fapply{
+  display:block; width:100%; font:inherit; font-size:15px; font-weight:600;
+  min-height:48px; margin:12px 0 2px; cursor:pointer;
+  border:1px solid var(--ink); border-radius:var(--r);
+  background:var(--ink); color:#fff;
+}
+.fapply.none{background:var(--card); color:var(--muted); border-color:var(--line); font-weight:500;}
+.frow{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+.frow label{flex:0 0 96px; font-size:13px; color:var(--muted);}
+.frow select{
+  flex:1; min-width:0; font:inherit; font-size:14px; padding:10px 12px; min-height:42px;
+  border:1px solid var(--line); border-radius:var(--r); background:var(--card); color:var(--ink);
+}
+.fswitch{display:flex; align-items:center; gap:10px; padding:4px 0 2px;}
+.fswitch input{width:20px; height:20px;}
+.fswitch span{font-size:14px;}
+.fclear{
+  font:inherit; font-size:13.5px; padding:8px 0; background:none; border:0;
+  color:var(--muted); text-decoration:underline; cursor:pointer;
+}
+.pbtns{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;}
+.pbtn{
+  font:inherit; font-size:13.5px; padding:9px 13px; min-height:40px;
+  border:1px solid var(--line); border-radius:999px; background:var(--card); color:var(--ink); cursor:pointer;
+}
+.pbtn[aria-pressed="true"]{background:var(--ink); color:#fff; border-color:var(--ink);}
+.prange{display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px;}
+.prange label{display:flex; align-items:center; gap:6px; font-size:13.5px; color:var(--muted);}
+.prange input{
+  font:inherit; font-size:14px; padding:9px 10px; min-height:40px;
+  border:1px solid var(--line); border-radius:var(--r); background:var(--card); color:var(--ink);
+}
+.chips{display:flex; gap:8px; overflow-x:auto; padding:10px 0 4px; -webkit-overflow-scrolling:touch;}
+.chip{
+  flex:0 0 auto; font:inherit; font-size:14px; padding:9px 14px; min-height:40px;
+  border:1px solid var(--line); border-radius:999px; background:var(--card); color:var(--ink); cursor:pointer;
+}
+.chip[aria-pressed="true"]{background:var(--ink); color:#fff; border-color:var(--ink);}
+.chip.paused{color:var(--muted); text-decoration:line-through;}
+
+main{max-width:680px; margin:0 auto; padding:14px 12px;}
+.note{
+  font-size:13px; color:var(--muted); background:#E5E6DF; border-radius:var(--r);
+  padding:10px 14px; margin-bottom:14px;
+}
+.empty{color:var(--muted); text-align:center; padding:48px 16px; font-size:15px;}
+.monthhead{
+  font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted);
+  margin:18px 4px 10px;
+}
+.folder{
+  width:100%; text-align:left; font:inherit; font-size:15px; font-weight:600;
+  background:var(--card); border:1px solid var(--line); border-radius:var(--r);
+  padding:14px 16px; margin:0 0 14px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;
+}
+.folder .cnt{font-weight:400; color:var(--muted); font-size:13.5px;}
+
+.check{
+  position:relative; background:var(--card); border:1px solid var(--line); border-radius:var(--r);
+  margin-bottom:14px; overflow:hidden;
+}
+.selvedge{position:absolute; left:0; top:0; bottom:0; width:12px; background:var(--sc,#9E9E9E);}
+/* правая кромка — цвет швеи (раздел 34.4) */
+.selvedge.right{left:auto; right:0; background:var(--swc,transparent);}
+.selvedge.right::after{background-image:radial-gradient(circle, rgba(255,255,255,.85) 1.2px, transparent 1.4px);}
+.check.hassew .chead, .check.hassew .cclient, .check.hassew .cbyline{padding-right:24px;}
+.swdot{width:14px; height:14px; border-radius:50%; flex:0 0 auto; border:1px solid rgba(0,0,0,.15);}
+.swwarn{flex-basis:100%; font-size:12px; color:#B26A00; padding-left:22px;}
+/* имя швеи — под кнопкой этапа, справа */
+.csew{
+  flex-basis:100%; text-align:right; margin-top:-2px;
+  font-size:15px; font-weight:600; letter-spacing:.01em;
+}
+.csew.nosew{font-weight:400; font-style:italic; color:var(--muted); font-size:13.5px;}
+.csew.none{font-weight:400; color:var(--muted); opacity:.65; font-size:13px;}
+.csew .warn{font-size:17px; line-height:1;}
+.selvedge::after{
+  content:""; position:absolute; top:6px; bottom:6px; left:4.5px; width:3px;
+  background-image:radial-gradient(circle, rgba(255,255,255,.85) 1.2px, transparent 1.4px);
+  background-size:3px 8px; background-repeat:repeat-y;
+}
+.check.stage-issued .selvedge{border-right:1px solid var(--line);}
+.check.stage-issued .selvedge::after{background-image:radial-gradient(circle, rgba(0,0,0,.25) 1.2px, transparent 1.4px);}
+.chead{
+  display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px;
+  padding:14px 14px 8px 24px; cursor:pointer; -webkit-tap-highlight-color:transparent;
+}
+.cnum{font-family:'IBM Plex Mono'; font-weight:600; font-size:17px;}
+.cstore{font-size:13px; color:var(--muted);}
+.stagechip{
+  margin-left:auto; font-size:12.5px; font-weight:600; padding:5px 10px; border-radius:6px;
+  background:var(--sc); color:var(--tc,#fff); white-space:nowrap;
+}
+.stagechip.bordered{border:1px solid var(--line);}
+.cclient{padding:0 14px 4px 24px; font-size:14px; color:var(--muted);}
+.cclient b{color:var(--ink); font-weight:500;}
+.cbyline{padding:0 14px 12px 24px; font-size:12.5px; color:var(--muted);}
+.cmeta{padding:10px 14px 12px 24px; font-size:13px; color:var(--muted); border-top:1px dashed var(--line);}
+
+.items{border-top:1px dashed var(--line); padding:6px 14px 6px 24px;}
+.item{display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; padding:9px 0; border-bottom:1px dashed var(--line);}
+.item:last-child{border-bottom:none;}
+.imark{font-family:'IBM Plex Mono'; font-weight:600; font-size:15px;}
+.iqty{font-family:'IBM Plex Mono'; font-size:14px; color:var(--muted);}
+.istatic{font-size:13px; color:var(--muted); margin-left:auto; text-align:right;}
+.item select{
+  margin-left:auto; font:inherit; font-size:14px; min-height:40px; padding:6px 8px;
+  border:1px solid var(--line); border-radius:10px; background:#FAFAF7; max-width:190px;
+}
+.ipart{width:100%; font-size:12.5px; color:var(--muted);}
+.isrc{width:100%; font-size:13px; color:var(--muted); display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+.isrc select{margin-left:0;}
+.itools{width:100%; display:flex; gap:14px;}
+.linkbtn{
+  background:none; border:none; font:inherit; font-size:13px; color:var(--muted);
+  text-decoration:underline; padding:6px 0; cursor:pointer; min-height:36px;
+}
+.splitrow{width:100%; display:flex; align-items:center; gap:8px; font-size:13.5px; background:#F6F6F1; border-radius:10px; padding:8px 10px; flex-wrap:wrap;}
+.splitrow input{width:76px; font:inherit; padding:8px; border:1px solid var(--line); border-radius:8px;}
+
+.actions{padding:12px 14px 14px 24px; display:flex; flex-direction:column; gap:10px; border-top:1px dashed var(--line);}
+button.primary, button.ghost, button.danger{
+  font:inherit; font-weight:600; font-size:15.5px; min-height:48px; border-radius:12px;
+  padding:12px 16px; cursor:pointer; width:100%;
+}
+button.primary{background:var(--ink); color:#fff; border:1px solid var(--ink);}
+button.primary:disabled{opacity:.45; cursor:default;}
+button.ghost{background:transparent; color:var(--ink); border:1px solid var(--line);}
+button.danger{background:transparent; color:var(--st-red); border:1px solid var(--st-red);}
+.hint{font-size:13px; color:var(--muted);}
+.sewrow{display:flex; align-items:center; gap:10px; font-size:14px;}
+.sewrow select{flex:1; font:inherit; min-height:44px; padding:8px 10px; border:1px solid var(--line); border-radius:10px; background:#FAFAF7;}
+
+.addform, .cancelform{
+  background:#F6F6F1; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:10px;
+}
+.addform .row{display:flex; gap:8px;}
+.addform input, .addform select, .cancelform input{
+  font:inherit; min-height:44px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:#fff; width:100%;
+}
+.addform .qty{width:96px; flex:0 0 auto;}
+.addform .unit{width:86px; flex:0 0 auto;}
+.formtitle{font-weight:600; font-size:14px;}
+.err{color:var(--st-red); font-size:13.5px;}
+.stockhint{font-size:12.5px; color:var(--muted);}
+
+/* замена позиции (раздел 37) */
+.item.repl{background:rgba(109,27,54,.045); border-left:3px solid var(--st-wine); padding-left:8px;}
+.item.repl .imark{color:var(--st-wine);}
+.item.replaced .imark, .item.replaced .iqty{text-decoration:line-through; opacity:.62;}
+.replnote{width:100%; font-size:12.5px; color:var(--st-wine); font-weight:600;}
+.replnote.was{color:var(--muted); font-weight:400;}
+.item.isnew .imark::after{
+  content:"замена"; margin-left:8px; font-family:inherit; font-size:11px; font-weight:600;
+  color:var(--st-wine); border:1px solid var(--st-wine); border-radius:999px; padding:1px 7px; vertical-align:2px;
+}
+.replform{width:100%; margin-top:8px; padding:10px; border:1px solid var(--st-wine); border-radius:var(--r); background:#FFF;}
+.replform .formtitle{color:var(--st-wine); margin-bottom:8px;}
+.replform input, .replform select{
+  font:inherit; font-size:14px; padding:10px 12px; min-height:42px;
+  border:1px solid var(--line); border-radius:var(--r); background:var(--card); width:100%;
+}
+.replform .row{display:flex; gap:8px; margin-top:8px;}
+.replform .row .qty{flex:1; min-width:0;} .replform .row .unit{flex:0 0 76px;} .replform .row select{flex:1.4; min-width:0;}
+.wmark{
+  font-size:12px; font-weight:600; color:#fff; background:var(--st-wine);
+  padding:3px 9px; border-radius:999px; white-space:nowrap;
+}
+.wmark.late{background:#B26A00;}
+.actions button[disabled]{opacity:.45; cursor:not-allowed;}
+/* позиция, добавленная после сборки (раздел 38.2) */
+.item.late{background:rgba(178,106,0,.05); border-left:3px solid #B26A00; padding-left:8px;}
+.item.late .imark::after{
+  content:"после сборки"; margin-left:8px; font-family:inherit; font-size:11px; font-weight:600;
+  color:#B26A00; border:1px solid #B26A00; border-radius:999px; padding:1px 7px; vertical-align:2px;
+}
+.item.late.settled{background:transparent; border-left-color:#BFC4B4;}
+.item.late.settled .imark::after{color:var(--muted); border-color:var(--line);}
+.editform{width:100%; margin-top:8px; padding:10px; border:1px solid var(--line); border-radius:var(--r); background:#FBFBF8;}
+.editform input, .editform select{
+  font:inherit; font-size:14px; padding:10px 12px; min-height:42px;
+  border:1px solid var(--line); border-radius:var(--r); background:var(--card); width:100%;
+}
+.editform .row{display:flex; gap:8px; margin-top:8px;}
+.editform .row .qty{flex:1; min-width:0;} .editform .row .unit{flex:0 0 76px;}
+/* лента комментариев (раздел 36) */
+.ccount{font-size:13px; color:var(--muted); white-space:nowrap;}
+.cmts{padding:10px 14px 12px 24px; border-top:1px dashed var(--line);}
+.cmts .formtitle{margin-bottom:8px;}
+.cmt{padding:8px 0; border-bottom:1px dashed var(--line); font-size:14px;}
+.cmt:last-of-type{border-bottom:none;}
+.cmt .meta{font-size:12.5px; color:var(--muted); margin-bottom:2px;}
+.cmt .meta b{color:var(--ink); font-weight:600;}
+.cmt .body{white-space:pre-wrap; word-break:break-word;}
+.cmtadd{display:flex; gap:8px; margin-top:8px;}
+.cmtadd input{
+  flex:1; min-width:0; font:inherit; font-size:14px; padding:10px 12px; min-height:42px;
+  border:1px solid var(--line); border-radius:var(--r); background:var(--card);
+}
+.icmt{width:100%; padding-left:2px;}
+.icmt .cmt{padding:6px 0; font-size:13.5px;}
+.history{border-top:1px dashed var(--line); padding:12px 14px 14px 24px; background:#FBFBF8;}
+.hentry{display:grid; grid-template-columns:92px 1fr; gap:4px 12px; padding:7px 0; border-bottom:1px dashed var(--line); font-size:13.5px;}
+.hentry:last-child{border-bottom:none;}
+.hts{font-family:'IBM Plex Mono'; color:var(--muted); font-size:12.5px;}
+.hwho{font-weight:600;}
+.htext{grid-column:2;}
+
+/* товары */
+.prod{
+  background:var(--card); border:1px solid var(--line); border-radius:var(--r);
+  padding:12px 14px; margin-bottom:10px;
+}
+.prow{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+.pname{font-family:'IBM Plex Mono'; font-weight:600; font-size:15px;}
+.punit{font-size:13px; color:var(--muted);}
+.ptotal{margin-left:auto; font-size:13px; color:var(--muted);}
+.pstocks{margin-top:8px; display:flex; flex-direction:column; gap:4px;}
+.pline{display:flex; justify-content:space-between; gap:10px; font-size:14px;}
+.pline .sname{color:var(--muted); flex:0 0 auto;}
+.pline .sname.off{text-decoration:line-through;}
+.pline .sval{font-family:'IBM Plex Mono'; font-weight:600; text-align:right;}
+.pline .sval .pieces{font-weight:400; color:var(--muted);}
+.pline .sval.neg{color:var(--st-red);}
+.pline .sval.none{color:var(--muted); font-weight:400;}
+.ptools{display:flex; gap:14px; margin-top:6px; flex-wrap:wrap;}
+.pedit{display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; align-items:center;}
+.pedit input, .pedit select{font:inherit; min-height:44px; padding:8px 10px; border:1px solid var(--line); border-radius:10px; background:#FAFAF7;}
+.pedit .stockin{width:150px;}
+.pedit .slabel{font-size:13.5px; color:var(--muted); width:110px;}
+
+/* статистика */
+.statcard{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:14px; margin-bottom:14px;}
+.statcard h3{font-family:'Prata', Georgia, serif; font-weight:400; font-size:17px; margin-bottom:10px;}
+.filters{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;}
+.filters select{font:inherit; font-size:14px; min-height:44px; padding:8px 10px; border:1px solid var(--line); border-radius:10px; background:#FAFAF7; flex:1; min-width:140px;}
+.brow{display:flex; justify-content:space-between; font-size:14px; margin-top:8px;}
+.brow .bcount{font-family:'IBM Plex Mono'; font-weight:600;}
+.btrack{height:8px; background:#EFEFEA; border-radius:4px; margin-top:3px;}
+.bfill{height:8px; background:var(--ink); border-radius:4px;}
+.srow{display:flex; justify-content:space-between; gap:10px; font-size:14px; padding:7px 0; border-bottom:1px dashed var(--line);}
+.srow:last-child{border-bottom:none;}
+.srow .sq{font-family:'IBM Plex Mono'; font-weight:600; text-align:right;}
+.srow .sq .pieces{font-weight:400; color:var(--muted);}
+.totline{margin-top:10px; font-size:13.5px; color:var(--muted);}
+.bkbtns{display:flex; gap:10px; flex-wrap:wrap;}
+.bkbtns button{flex:1; min-width:180px;}
+
+.bottombar{
+  position:fixed; left:0; right:0; bottom:0; z-index:30;
+  padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+  background:linear-gradient(to top, var(--bg) 70%, transparent);
+}
+.bottombar .inner{max-width:680px; margin:0 auto;}
+.bottombar button{
+  width:100%; min-height:52px; font:inherit; font-weight:600; font-size:16px;
+  background:var(--ink); color:#fff; border:1px solid var(--ink); border-radius:14px; cursor:pointer;
+  box-shadow:0 6px 18px rgba(38,37,31,.18);
+}
+
+.toast{
+  position:fixed; left:50%; bottom:86px; transform:translateX(-50%) translateY(20px);
+  background:var(--ink); color:#fff; font-size:14px; padding:11px 16px; border-radius:12px;
+  opacity:0; pointer-events:none; transition:opacity .18s, transform .18s; z-index:60; max-width:90vw;
+}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+.sheetback{position:fixed; inset:0; background:rgba(38,37,31,.35); z-index:40; display:none;}
+.sheetback.open{display:block;}
+.sheet{
+  position:fixed; left:0; right:0; bottom:0; z-index:50; background:var(--card);
+  border-radius:18px 18px 0 0; padding:18px 16px calc(18px + env(safe-area-inset-bottom));
+  max-width:680px; margin:0 auto; transform:translateY(105%); transition:transform .22s ease; max-height:88vh; overflow-y:auto;
+}
+.sheet.open{transform:translateY(0);}
+.sheet h2{font-family:'Prata', Georgia, serif; font-weight:400; font-size:19px; margin-bottom:12px;}
+.sheet label{display:block; font-size:13.5px; color:var(--muted); margin:10px 0 4px;}
+.sheet input, .sheet select{
+  font:inherit; width:100%; min-height:46px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:#FAFAF7;
+}
+.sheet .btns{display:flex; gap:10px; margin-top:16px;}
+.sheet .btns button{flex:1;}
+
+.loginback{
+  position:fixed; inset:0; z-index:100; background:var(--bg);
+  display:flex; align-items:center; justify-content:center; padding:20px;
+}
+.loginback.hidden{display:none;}
+.logincard{
+  width:100%; max-width:380px; background:var(--card); border:1px solid var(--line);
+  border-radius:18px; padding:22px 20px;
+}
+.logincard h2{font-family:'Prata', Georgia, serif; font-weight:400; font-size:22px; margin-bottom:10px;}
+.logincard label{display:block; font-size:13.5px; color:var(--muted); margin:12px 0 4px;}
+.logincard select, .logincard input{
+  font:inherit; width:100%; min-height:48px; padding:10px 12px;
+  border:1px solid var(--line); border-radius:10px; background:#FAFAF7;
+}
+.logincard button{width:100%;}
+.remember{display:flex; align-items:center; gap:10px; font-size:14.5px; margin-top:12px; cursor:pointer;}
+.remember input{width:22px; height:22px;}
+:focus-visible{outline:3px solid #8A8DE8; outline-offset:2px;}
+@media (prefers-reduced-motion: reduce){ .sheet,.toast{transition:none;} }
+@media (min-width:700px){ body{font-size:15.5px;} }
+</style>
+<!-- клиент базы данных; config.js обязан идти раньше db.js -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="db.js"></script>
+</head>
+<body>
+
+<header>
+  <div class="brandrow">
+    <h1>Textile Manager<span>2.6</span></h1>
+    <div class="hright">
+      <button class="undobtn" id="undoBtn" title="Отменить последнее действие" aria-label="Отменить последнее действие">↶</button>
+      <div class="userbox" id="whoBox"></div>
+      <span class="syncbadge" id="syncBadge"></span>
+    </div>
+  </div>
+  <div class="tabs" role="tablist">
+    <button class="tab" id="tabChecks" role="tab" aria-selected="true" onclick="act.tab('checks')">Чеки</button>
+    <button class="tab" id="tabProds" role="tab" aria-selected="false" onclick="act.tab('products')">Товары</button>
+    <button class="tab" id="tabStats" role="tab" aria-selected="false" onclick="act.tab('stats')">Статистика</button>
+    <button class="tab" id="tabAdmin" role="tab" aria-selected="false" onclick="act.tab('admin')">Админ</button>
+  </div>
+  <div class="searchrow" id="searchrow">
+    <input id="search" type="search" placeholder="Поиск: номер, маркировка, клиент" aria-label="Поиск">
+    <button class="fbtn" id="fltBtn" onclick="act.fltToggle()" aria-expanded="false">Фильтры<span class="fcount" id="fltCount"></span></button>
+  </div>
+  <div class="moderow" id="moderow">
+    <button class="mbtn" id="mList" onclick="act.listMode('list')">Списком</button>
+    <button class="mbtn" id="mSeam" onclick="act.listMode('seam')">По швеям</button>
+  </div>
+  <div class="chips" id="chips"></div>
+</header>
+
+<div class="fpanel" id="fpanel"></div>
+
+<main>
+  <div class="note" id="topnote" style="display:none"></div>
+  <div id="list"></div>
+</main>
+
+<div class="bottombar" id="bottombar"><div class="inner">
+  <button id="newBtn">+ Новый чек</button>
+</div></div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<div class="idlebar" id="idleBar" role="alert">
+  <span>Через минуту произойдёт автоматический выход.</span>
+  <button onclick="act.stayIn()">Я здесь</button>
+</div>
+
+<div class="sheetback" id="sheetback"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <h2 id="sheetTitle">Новый чек</h2>
+  <label for="fNum">Номер чека (сквозная нумерация)</label>
+  <input id="fNum" inputmode="numeric" placeholder="Например, 100131">
+  <div class="err" id="fErr" style="display:none">Чек с таким номером уже существует.</div>
+  <label for="fStore">Магазин</label>
+  <select id="fStore"></select>
+  <label for="fClient">Клиент (необязательно)</label>
+  <input id="fClient" placeholder="ФИО или имя клиента">
+  <label for="fComment">Комментарий (необязательно)</label>
+  <input id="fComment" placeholder="Например: клиент заберёт после 20 августа">
+  <div class="btns">
+    <button class="ghost" id="fCancel">Отмена</button>
+    <button class="primary" id="fSave">Создать чек</button>
+  </div>
+</div>
+
+<div class="loginback" id="loginback">
+  <div class="logincard">
+    <h2>Textile Manager</h2>
+    <div class="hint" style="margin-bottom:12px">Вход по личному PIN-коду. Все действия записываются в историю от имени вошедшего сотрудника.</div>
+    <label for="loginUser">Сотрудник</label>
+    <input id="loginUser" list="userHints" autocomplete="off" placeholder="Например, Ольга М."
+           onkeydown="if(event.key==='Enter')document.getElementById('loginPin').focus()">
+    <datalist id="userHints"></datalist>
+    <label for="loginPin">PIN-код</label>
+    <input id="loginPin" type="password" inputmode="numeric" autocomplete="off" placeholder="••••"
+           onkeydown="if(event.key==='Enter')act.login()">
+    <div class="err" id="loginErr" style="display:none"></div>
+    <label class="remember" id="rememberRow"><input type="checkbox" id="loginRemember" checked> Запомнить моё имя на этом устройстве</label>
+    <div class="hint" id="rememberNote" style="display:none; margin-top:10px">«Запомнить меня» заработает, когда файл открыт в обычном браузере телефона или компьютера — во встроенном предпросмотре сохранение отключено.</div>
+    <button class="primary" id="loginBtn" onclick="act.login()" style="margin-top:12px">Войти</button>
+    <div class="hint" style="margin-top:14px">Имя вводится так, как оно записано в справочнике сотрудников. PIN назначает владелец сети.</div>
+  </div>
+</div>
+
+<datalist id="markList"></datalist>
+<input type="file" id="importFile" accept="application/json" style="display:none">
+<input type="file" id="excelFile" accept=".xlsx,.xls,.csv" style="display:none">
+
+<script>
+/* ────────────────── справочники ────────────────── */
+let STORES = [];
+let sidc = 4; const nsid = () => TM_DB.dbNewId();
+let USERS = [];
+const userRole = n => (USERS.find(u => u.name === n) || {}).role || 'manager';
+const isAdminNow = () => userRole(currentUser) === 'admin';
+const isOwnerNow = () => !!((USERS.find(u => u.name === currentUser) || {}).owner);
+function orderUsers(){ USERS.sort((a,b) => (b.owner?1:0) - (a.owner?1:0)); }
+/* палитра швей (раздел 34.2) — не пересекается с цветами этапов */
+const SEW_COLORS = [
+  {hex:'#6A1B9A', name:'фиолетовый'},
+  {hex:'#00838F', name:'бирюзовый'},
+  {hex:'#5D4037', name:'коричневый'},
+  {hex:'#283593', name:'индиго'},
+  {hex:'#558B2F', name:'оливковый'},
+  {hex:'#455A64', name:'сине-серый'},
+];
+const NO_SEW_ID = '00000000-0000-4000-8000-000000000000';  // та же запись, что в schema.sql
+let swc = 1; const nswid = () => TM_DB.dbNewId();
+let SEAMSTRESSES = [];
+swc = 6;
+/* швеи: доступ по идентификатору (решение Р11) */
+const seamById   = id => SEAMSTRESSES.find(s => s.id === id) || null;
+const seamName   = id => (seamById(id) || {}).name || '';
+const seamColor  = id => (seamById(id) || {}).color || null;
+const isNoSew    = id => !!((seamById(id) || {}).noSewing);
+const realSeams  = () => SEAMSTRESSES.filter(s => !s.noSewing);
+/* первый свободный цвет палитры; если все заняты — null (повтор разрешён, раздел 34.2) */
+function nextFreeColor(){
+  const used = new Set(realSeams().map(s => s.color));
+  const free = SEW_COLORS.find(c => !used.has(c.hex));
+  return free ? free.hex : null;
+}
+const colorOwner = (hex, exceptId) =>
+  realSeams().find(s => s.color === hex && s.id !== exceptId) || null;
+const MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+
+const ST = { AVAIL:'В наличии', ORDER:'Заказать', ORDERED:'Заказано', MOVE:'Переместить',
+             RECV:'Получено', REPL:'Заменить' };
+/* «Заменить» доступно из любого рабочего состояния (решение Р17).
+   Выход из него — только действиями «Выполнить замену» / «Отменить пометку», раздел 37. */
+const TRANS = {
+  [ST.AVAIL]:  [ST.ORDER, ST.MOVE, ST.REPL],
+  [ST.ORDER]:  [ST.ORDERED, ST.AVAIL, ST.MOVE, ST.REPL],
+  [ST.ORDERED]:[ST.RECV, ST.ORDER, ST.REPL],
+  [ST.MOVE]:   [ST.RECV, ST.AVAIL, ST.ORDER, ST.REPL],
+  [ST.RECV]:   [ST.ORDERED, ST.MOVE, ST.REPL],
+  [ST.REPL]:   [],
+};
+/* состояния, в которых позиция считается закрытой (раздел 38.3) */
+const SETTLED = [ST.AVAIL, ST.RECV];
+const STAGES = {
+  awaiting_check:   {label:'Ожидает проверки',      color:'var(--st-gray)',   dark:false},
+  needs_replacement:{label:'Требуется замена',      color:'var(--st-wine)',   dark:false},
+  needs_order:      {label:'Требуется заказ',       color:'var(--st-red)',    dark:false},
+  needs_transfer:   {label:'Требуется перемещение', color:'var(--st-orange)', dark:true},
+  awaiting_delivery:{label:'Ожидание поставки',     color:'var(--st-yellow)', dark:true},
+  ready_to_assemble:{label:'Готов к сборке',        color:'var(--st-cyan)',   dark:true},
+  assembled:        {label:'Собран',                color:'var(--st-blue)',   dark:false},
+  in_sewing:        {label:'В пошиве',              color:'var(--st-lgreen)', dark:true},
+  ready_to_issue:   {label:'Готов к выдаче',        color:'var(--st-dgreen)', dark:false},
+  issued:           {label:'Выдан · архив',         color:'var(--st-white)',  dark:true},
+  cancelled:        {label:'Отменён · архив',       color:'var(--st-cancel)', dark:false},
+};
+const KIND_LABELS = {
+  create:'Создание чеков', add_item:'Добавление позиций', status:'Смены состояний',
+  received_move:'Получено перемещением', received_order:'Получено от поставщика',
+  src:'Смена источника', del_item:'Удаление позиций', split:'Разделение позиций',
+  confirm:'Подтверждение наличия', reset:'Сброс подтверждения', assemble:'Сборка заказов',
+  sew:'Передача в пошив', ready:'Готовность заказов', issue:'Выдача клиентам',
+  cancel:'Отмена чеков', undo:'Отмена действий (↶)', comment:'Комментарии',
+  mark_replace:'Пометки к замене', unmark_replace:'Снятие пометок замены', replace:'Замены позиций',
+  add_item_late:'Добавление позиций после сборки', edit_item:'Изменение позиций',
+  edit_item_late:'Изменение позиций после сборки', del_item_late:'Удаление позиций после сборки',
+};
+
+/* ────────────────── товары: остатки — куски по магазинам ──────────────────
+   stocks[storeId] = массив кусков, напр. [5,7,25]; итог = сумма кусков.
+   Ключа нет — остаток в этом магазине не отслеживается.
+   Отрез при продаже: берётся НАИМЕНЬШИЙ ДОСТАТОЧНЫЙ кусок (крупные рулоны
+   сохраняются цельными); если достаточного нет — режем с самых больших;
+   если ткани не хватает — добавляется отрицательный «кусок»-невязка.
+   Возврат (коррекция, удаление, отмена чека) кладёт отрез обратно
+   ОТДЕЛЬНЫМ куском — физически так и есть. */
+let products = [];
+let pid = 11; const npid = () => TM_DB.dbNewId();
+const round2 = x => Math.round(x*100)/100;
+const prodByName = n => products.find(p => p.name.toLowerCase() === String(n).trim().toLowerCase());
+const hasStock = (p,sid) => Object.prototype.hasOwnProperty.call(p.stocks, sid);
+const stockTotal = (p,sid) => hasStock(p,sid) ? round2(p.stocks[sid].reduce((a,b)=>a+b,0)) : null;
+const piecesStr = arr => arr.length>1 ? ' ('+[...arr].sort((a,b)=>a-b).map(x=>x).join('+')+')' : '';
+const maxPiece = (p,sid) => hasStock(p,sid) && p.stocks[sid].length ? Math.max(...p.stocks[sid]) : null;
+function ensureProduct(name, unit){
+  let p = prodByName(name);
+  if (!p){ p = {id:npid(), name:String(name).trim(), unit:unit||'м', stocks:{}}; products.push(p); }
+  return p;
+}
+function cutPieces(arr, qty){
+  qty = round2(qty);
+  // наименьший достаточный кусок
+  let best=-1;
+  for (let i=0;i<arr.length;i++) if (arr[i]>=qty && (best<0 || arr[i]<arr[best])) best=i;
+  if (best>=0){
+    arr[best]=round2(arr[best]-qty);
+    if (arr[best]===0) arr.splice(best,1);
+    return;
+  }
+  // достаточного нет — режем с самых больших
+  while (qty>0 && arr.some(x=>x>0)){
+    let bi=0; for(let i=1;i<arr.length;i++) if(arr[i]>arr[bi]) bi=i;
+    if (arr[bi]<=0) break;
+    if (arr[bi]>qty){ arr[bi]=round2(arr[bi]-qty); qty=0; }
+    else { qty=round2(qty-arr[bi]); arr.splice(bi,1); }
+  }
+  if (qty>0) arr.push(round2(-qty));  // невязка — остаток ушёл в минус
+}
+function deductFrom(it, storeId){
+  const p = prodByName(it.mark);
+  if (p && storeId && hasStock(p, storeId)){
+    cutPieces(p.stocks[storeId], it.qty);
+    it.deducted = true; it.deductedFrom = storeId;
+  }
+}
+function refund(it){
+  if (!it.deducted) return;
+  const p = prodByName(it.mark);
+  if (p && it.deductedFrom && hasStock(p, it.deductedFrom))
+    p.stocks[it.deductedFrom].push(round2(it.qty));   // отрез возвращается отдельным куском
+  it.deducted = false; it.deductedFrom = null;
+}
+function parsePieces(str){
+  const s = String(str).trim();
+  if (s==='') return null;                    // «не отслеживается»
+  const parts = s.split(/[+,;]/).map(x=>x.trim()).filter(x=>x!=='');
+  const nums = parts.map(x=>parseFloat(x.replace(',','.')));
+  if (!nums.length || nums.some(isNaN)) return undefined;   // ошибка
+  return nums.map(round2);
+}
+
+/* ────────────────── чеки ────────────────── */
+let iid = 1; const nid   = () => TM_DB.dbNewId();
+let cmc = 1; const ncmid = () => TM_DB.dbNewId();
+
+/* ── приведение данных к модели 2.4 ──
+   Работает и на демоданных, и на старых резервных копиях, и при отмене действия.
+   Старое хранение швеи строкой заменяется ссылкой по идентификатору (решение Р11). */
+function migrateSeamstresses(list){
+  if (!Array.isArray(list) || !list.length) return;
+  // старый формат: массив строк
+  if (typeof list[0] === 'string'){
+    const seen = new Set();
+    SEAMSTRESSES = [{id:NO_SEW_ID, name:'Без пошива', color:null, noSewing:true, active:true}];
+    swc = 1;
+    list.forEach(nm => {
+      const key = String(nm).toLowerCase();
+      if (!nm || seen.has(key)) return;
+      seen.add(key);
+      SEAMSTRESSES.push({id:nswid(), name:String(nm), color:nextFreeColor(), noSewing:false, active:true});
+    });
+  } else {
+    SEAMSTRESSES = list.map(s => ({
+      id: s.id || nswid(), name: s.name || '', color: s.color || null,
+      noSewing: !!s.noSewing, active: s.active !== false
+    }));
+    const maxN = SEAMSTRESSES.reduce((m, s) => {
+      const n = parseInt(String(s.id).replace(/^w/, ''), 10);
+      return isNaN(n) ? m : Math.max(m, n);
+    }, 0);
+    swc = maxN + 1;
+  }
+  // запись «Без пошива» обязана существовать ровно одна
+  if (!SEAMSTRESSES.some(s => s.noSewing))
+    SEAMSTRESSES.unshift({id:NO_SEW_ID, name:'Без пошива', color:null, noSewing:true, active:true});
+  // цвет обязателен у каждой настоящей швеи
+  realSeams().forEach(s => { if (!s.color) s.color = nextFreeColor() || SEW_COLORS[0].hex; });
+}
+function migrateCheck(c){
+  if (!c.id) c.id = TM_DB.dbNewId();   // чеки из резервной копии
+  // швея: имя строкой → ссылка по идентификатору
+  if (c.seamstressId === undefined){
+    if (c.seamstress){
+      let s = SEAMSTRESSES.find(x => x.name === c.seamstress);
+      if (!s){
+        s = {id:nswid(), name:c.seamstress, color:nextFreeColor() || SEW_COLORS[0].hex,
+             noSewing:false, active:true};
+        SEAMSTRESSES.push(s);
+      }
+      c.seamstressId = s.id;
+    } else c.seamstressId = null;
+  }
+  delete c.seamstress;
+  if (c.skippedSewing === undefined) c.skippedSewing = false;
+  // комментарий из формы создания становится первой записью ленты (раздел 36.1)
+  if (!Array.isArray(c.comments)){
+    c.comments = [];
+    if (c.comment){
+      c.comments.push({id:ncmid(), itemId:null, text:c.comment,
+                       user:c.createdBy, ts:'—', d:c.createdAt});
+    }
+  }
+  delete c.comment;
+  (c.items || []).forEach(i => {
+    if (i.addedLate  === undefined) i.addedLate  = false;
+    if (i.prevStatus === undefined) i.prevStatus = null;
+    if (i.replacedBy === undefined) i.replacedBy = null;
+    if (i.replaces   === undefined) i.replaces   = null;
+  });
+  return c;
+}
+function migrateAll(){ checks.forEach(migrateCheck); }
+function mkItem(mark, qty, unit, status, src, extra){
+  return Object.assign({id:nid(), mark, qty, unit, status, src:src||null,
+    deducted:false, deductedFrom:null, fromQty:null,
+    addedLate:false,        // добавлена после сборки (раздел 38)
+    prevStatus:null,        // состояние до пометки «Заменить» — для отмены пометки
+    replacedBy:null,        // id новой позиции, которой заменена эта
+    replaces:null           // id исходной позиции, которую заменяет эта
+  }, extra||{});
+}
+function H(ts, d, user, text, kind){ return {id:TM_DB.dbNewId(), ts, d, user, text, kind}; }
+
+let checks = [];
+
+/* ────────────────── состояние интерфейса ────────────────── */
+let currentUser = '';
+let authed = false;
+const REMKEY = 'tm_login';
+const canRemember = (() => { try { localStorage.setItem('__tm','1'); localStorage.removeItem('__tm'); return true; } catch(e){ return false; } })();
+const remStore = {
+  get(){ try { return localStorage.getItem(REMKEY); } catch(e){ return null; } },
+  set(v){ try { localStorage.setItem(REMKEY, v); } catch(e){} },
+  del(){ try { localStorage.removeItem(REMKEY); } catch(e){} },
+  setIdle(){ try { localStorage.setItem(REMKEY + '_idle', '1'); } catch(e){} },
+  takeIdle(){ try { const v = localStorage.getItem(REMKEY + '_idle');
+                    localStorage.removeItem(REMKEY + '_idle'); return v === '1'; }
+              catch(e){ return false; } },
+};
+/* режим списка: 'list' — обычный, 'seam' — по швеям. Сохраняется между сеансами (раздел 35) */
+const MODEKEY = 'tm_list_mode';
+let listMode = (() => { try { return localStorage.getItem(MODEKEY) === 'seam' ? 'seam' : 'list'; }
+                        catch(e){ return 'list'; } })();
+let tab = 'checks';
+let filterStore = 'all';   // сохраняется ради совместимости, синхронизируется с flt.store
+/* панель фильтров (раздел 20.2). Внутри одного фильтра — ровно одно значение (решение Р13) */
+let flt = { store:'all', seam:'all', mgr:'all', stage:'all', istat:'all', archive:false };
+let query = '';
+const ui = { expanded:new Set(['100125']), history:new Set(), addForm:new Set(),
+             cancelForm:new Set(), splitFor:new Set(), openMonths:new Set(),
+             prodAdd:false, prodEdit:new Set(), prodRecv:new Set(), fltOpen:false, cmtFor:new Set(), replFor:new Set(), editFor:new Set(),
+             stPeriod:'all', stStore:'all', stUser:'all', stKind:'all', stGroup:'store', stShopStore:'s1', swPeriod:'all',
+             per:{kind:'month', from:null, to:null} };
+
+/* ────────────────── отмена действий ────────────────── */
+const undoStack = [];
+function snapshot(){ return JSON.stringify({checks, products, iid, pid, cmc, stores:STORES, users:USERS, seamstresses:SEAMSTRESSES, sidc, swc}); }
+function pushUndo(desc, checkNum){
+  undoStack.push({desc, checkNum: checkNum||null, state: snapshot()});
+  if (undoStack.length > 20) undoStack.shift();
+  updateUndoBtn();
+}
+function doUndo(){
+  const u = undoStack.pop();
+  if (!u) return;
+  const s = JSON.parse(u.state);
+  checks = s.checks; products = s.products; iid = s.iid; pid = s.pid;
+  if (s.stores) STORES = s.stores;
+  if (s.users) USERS = s.users;
+  if (s.seamstresses) SEAMSTRESSES = s.seamstresses;
+  if (s.sidc) sidc = s.sidc;
+  if (s.swc) swc = s.swc;
+  if (s.cmc) cmc = s.cmc;
+  if (!USERS.some(x => x.name === currentUser)) currentUser = USERS[0].name;
+  if (u.checkNum){
+    const c = byNum(u.checkNum);
+    if (c) c.history.push(H(now(), todayISO(), currentUser, 'Отменено действие: ' + u.desc + '.', 'undo'));
+  }
+  updateUndoBtn(); render();
+  toast('Отменено: ' + u.desc);
+}
+function updateUndoBtn(){
+  const b = document.getElementById('undoBtn');
+  b.disabled = undoStack.length === 0;
+  b.title = undoStack.length ? 'Отменить: ' + undoStack[undoStack.length-1].desc : 'Отменять нечего';
+}
+
+/* ────────────────── утилиты ────────────────── */
+const byNum = n => checks.find(c=>c.num===n);
+const storeName = id => (STORES.find(s=>s.id===id)||{}).name || '—';
+const firstOtherStore = sid => (STORES.find(s=>s.active && s.id!==sid)||{}).id || null;
+const fem = u => /[ая]$/.test(u.split(' ')[0]);
+const verb = (m,f) => fem(currentUser)?f:m;
+const now = () => { const d=new Date(); const z=n=>String(n).padStart(2,'0');
+  return `${z(d.getDate())}.${z(d.getMonth()+1)} ${z(d.getHours())}:${z(d.getMinutes())}`; };
+const todayISO = () => { const d=new Date(); const z=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`; };
+const fmtD = iso => iso ? iso.slice(8,10)+'.'+iso.slice(5,7)+'.'+iso.slice(0,4) : '';
+const monthKey = iso => iso ? iso.slice(0,7) : '';
+/* ── периоды статистики (раздел 22) ── */
+const PERIODS = [
+  {k:'today',   label:'Сегодня'},
+  {k:'week',    label:'Неделя'},
+  {k:'month',   label:'Месяц'},
+  {k:'quarter', label:'Квартал'},
+  {k:'year',    label:'Год'},
+  {k:'range',   label:'Период'},
+  {k:'all',     label:'За всё время'},
+];
+const isoOf = d => { const z=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`; };
+/* границы периода включительно; null — без ограничения */
+function periodRange(){
+  const p = ui.per, t = new Date();
+  if (p.kind === 'all') return {from:null, to:null};
+  if (p.kind === 'range') return {from:p.from||null, to:p.to||null};
+  const to = isoOf(t);
+  if (p.kind === 'today')  return {from:to, to};
+  if (p.kind === 'week'){                       // календарная неделя с понедельника
+    const dow = (t.getDay() + 6) % 7;           // пн = 0
+    const m = new Date(t); m.setDate(t.getDate() - dow);
+    return {from:isoOf(m), to};
+  }
+  if (p.kind === 'month')   return {from:isoOf(new Date(t.getFullYear(), t.getMonth(), 1)), to};
+  if (p.kind === 'quarter') return {from:isoOf(new Date(t.getFullYear(), Math.floor(t.getMonth()/3)*3, 1)), to};
+  if (p.kind === 'year')    return {from:`${t.getFullYear()}-01-01`, to};
+  return {from:null, to:null};
+}
+const inPeriod = iso => {
+  if (!iso) return false;
+  const {from, to} = periodRange();
+  if (from && iso < from) return false;
+  if (to   && iso > to)   return false;
+  return true;
+};
+function periodLabel(){
+  const p = ui.per;
+  if (p.kind === 'all') return 'за всё время';
+  if (p.kind === 'range'){
+    if (!p.from && !p.to) return 'период не задан';
+    if (p.from && p.to)   return `с ${fmtD(p.from)} по ${fmtD(p.to)}`;
+    return p.from ? `с ${fmtD(p.from)}` : `по ${fmtD(p.to)}`;
+  }
+  const {from, to} = periodRange();
+  if (p.kind === 'today') return `за сегодня, ${fmtD(to)}`;
+  const w = {week:'за неделю', month:'за месяц', quarter:'за квартал', year:'за год'}[p.kind];
+  return `${w} — с ${fmtD(from)} по ${fmtD(to)}`;
+}
+const monthLabel = key => MONTHS[parseInt(key.slice(5,7),10)-1] + ' ' + key.slice(0,4);
+function log(c, text, kind){ c.history.push(H(now(), todayISO(), currentUser, text, kind||'other')); }
+/* позиции, уже заменённые, остаются видимыми, но в расчётах не участвуют (раздел 37.2) */
+const liveItems = c => c.items.filter(i => !i.replacedBy);
+
+function stageOf(c){
+  if (c.manual) return c.manual;
+  const st = liveItems(c).map(i=>i.status);
+  if (st.includes(ST.REPL))    return 'needs_replacement';
+  if (st.includes(ST.ORDER))   return 'needs_order';
+  if (st.includes(ST.MOVE))    return 'needs_transfer';
+  if (st.includes(ST.ORDERED)) return 'awaiting_delivery';
+  return c.confirmed ? 'ready_to_assemble' : 'awaiting_check';
+}
+const isArchived = c => ['issued','cancelled'].includes(stageOf(c));
+/* этапы после сборки заказа (разделы 9.2 и 38) */
+const POST_ASSEMBLY = ['assembled','in_sewing','ready_to_issue'];
+const isPostAssembly = c => POST_ASSEMBLY.includes(stageOf(c));
+/* позиции, помеченные к замене */
+const replItems = c => liveItems(c).filter(i => i.status === ST.REPL);
+/* позиции, добавленные после сборки и ещё не закрытые */
+const openLateItems = c => liveItems(c).filter(i => i.addedLate && !SETTLED.includes(i.status));
+/* выдача блокируется, пока есть замена или незакрытая поздняя позиция (раздел 38.3) */
+const issueBlockers = c => [...replItems(c), ...openLateItems(c)];
+const canIssue = c => issueBlockers(c).length === 0;
+/* Текущая загрузка швей для выбора при сборке:
+   act  — чеков «В пошиве» у швеи сейчас, actM — их метраж;
+   done — сшито всего (чеки, дошедшие до «Готов к выдаче» / «Выдан»).
+   Сортировка — от наименее загруженной. */
+function sewingLoad(){
+  const map = new Map(realSeams().map(s => [s.id, {act:0, actM:0, done:0}]));
+  checks.forEach(c => {
+    if (!c.seamstressId) return;
+    const e = map.get(c.seamstressId);
+    if (!e) return;
+    const st = stageOf(c);
+    if (st === 'in_sewing'){
+      e.act++;
+      e.actM = round2(e.actM + c.items.filter(i => i.unit === 'м').reduce((a, i) => a + i.qty, 0));
+    } else if (st === 'ready_to_issue' || st === 'issued'){
+      e.done++;
+    }
+  });
+  return [...map.entries()].map(([id, e]) => ({id, name:seamName(id), color:seamColor(id), ...e}))
+    .sort((a, b) => a.act - b.act || a.actM - b.actM || a.name.localeCompare(b.name, 'ru'));
+}
+function resetConfirmIfNeeded(c){
+  if (c.confirmed && !c.manual){ c.confirmed=false; log(c,'Сброшено подтверждение наличия (позиции изменены).','reset'); }
+}
+const esc = s => String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+function toast(text){
+  const t=document.getElementById('toast'); t.textContent=text; t.classList.add('show');
+  clearTimeout(toast._h); toast._h=setTimeout(()=>t.classList.remove('show'), 2600);
+}
+function stockLabel(name, sid){
+  const p = prodByName(name);
+  if (!p || !hasStock(p, sid)) return '';
+  return ` · ${stockTotal(p,sid)} ${p.unit}`;
+}
+function stocksLine(name){
+  const p = prodByName(name);
+  if (!p) return '';
+  const parts = STORES.filter(s=>hasStock(p, s.id))
+    .map(s=>`${s.name}: ${stockTotal(p,s.id)} ${p.unit}${piecesStr(p.stocks[s.id])}`);
+  return parts.length ? 'Остатки — ' + parts.join(' · ') : 'Остатки не отслеживаются.';
+}
+
+/* ────────────────── действия ────────────────── */
+const act = {
+  tab(v){ tab=v; ui.prodAdd=false; render(); },
+  toggle(num){ ui.expanded.has(num) ? ui.expanded.delete(num) : ui.expanded.add(num); render(); },
+  toggleHistory(num){ ui.history.has(num) ? ui.history.delete(num) : ui.history.add(num); render(); },
+  toggleMonth(k){ ui.openMonths.has(k) ? ui.openMonths.delete(k) : ui.openMonths.add(k); render(); },
+  async login(){
+    const name = document.getElementById('loginUser').value.trim();
+    const pin  = document.getElementById('loginPin').value.trim();
+    const err  = document.getElementById('loginErr');
+    const btn  = document.getElementById('loginBtn');
+    if (!name){ err.textContent = 'Введите имя сотрудника.'; err.style.display = 'block'; return; }
+    if (!pin){  err.textContent = 'Введите PIN-код.';        err.style.display = 'block'; return; }
+    btn.disabled = true; btn.textContent = 'Вхожу…';
+    const r = await TM_DB.dbSignIn(name, pin);
+    btn.disabled = false; btn.textContent = 'Войти';
+    if (!r.ok){
+      err.textContent = r.error; err.style.display = 'block';
+      document.getElementById('loginPin').value = ''; return;
+    }
+    try {
+      if (canRemember && document.getElementById('loginRemember').checked) remStore.set(name);
+      else remStore.del();
+    } catch(e){}
+    err.style.display = 'none';
+    document.getElementById('loginPin').value = '';
+    await afterLogin();
+  },
+  stayIn(){ idleReset(); },
+  async logout(){
+    idleClear();
+    if (syncPending()){
+      if (!confirm('Часть изменений ещё не сохранена. Выйти всё равно?')) return;
+    }
+    await TM_DB.dbSignOut();
+    location.reload();
+  },
+  filter(v){ flt.store = v; filterStore = v; render(); },
+  cmtToggle(itemId){
+    if (ui.cmtFor.has(itemId)) ui.cmtFor.delete(itemId); else ui.cmtFor.add(itemId);
+    render();
+  },
+  addComment(num, itemId){
+    const c = byNum(num);
+    if (!c || !canComment(c)) return;
+    const el = document.getElementById(itemId ? 'cmi-'+itemId : 'cm-'+num);
+    const text = (el ? el.value : '').trim();
+    if (!text) return;
+    const it = itemId ? c.items.find(i => i.id === itemId) : null;
+    pushUndo('комментарий к чеку №'+num, num);
+    c.comments.push({id:ncmid(), itemId:itemId||null, text, user:currentUser, ts:now(), d:todayISO()});
+    log(c, `${verb('Добавил','Добавила')} комментарий${it ? ' к позиции ' + it.mark : ''}.`, 'comment');
+    if (itemId) ui.cmtFor.add(itemId);
+    render();
+    const back = document.getElementById(itemId ? 'cmi-'+itemId : 'cm-'+num);
+    if (back) back.focus();
+  },
+  perSet(k){
+    ui.per.kind = k;
+    if (k === 'range' && !ui.per.from && !ui.per.to){
+      const {from, to} = (ui.per.kind='month', periodRange());   // подставим текущий месяц как отправную точку
+      ui.per.kind = 'range'; ui.per.from = from; ui.per.to = to;
+    }
+    render();
+  },
+  perRange(){
+    const f = document.getElementById('per-from'), t = document.getElementById('per-to');
+    ui.per.from = f && f.value ? f.value : null;
+    ui.per.to   = t && t.value ? t.value : null;
+    if (ui.per.from && ui.per.to && ui.per.from > ui.per.to){   // границы наоборот — меняем местами
+      const x = ui.per.from; ui.per.from = ui.per.to; ui.per.to = x;
+    }
+    render();
+  },
+  /* снятие пометки — позиция возвращается в прежнее состояние (раздел 37.1) */
+  unmarkReplace(num, itemId){
+    const c = byNum(num), it = c.items.find(i => i.id === itemId);
+    if (!it || it.status !== ST.REPL) return;
+    const back = it.prevStatus || ST.ORDER;
+    pushUndo(`снятие пометки замены с ${it.mark} в чеке №${num}`, num);
+    it.status = back; it.prevStatus = null;
+    if (back === ST.AVAIL && !it.deducted) deductFrom(it, c.store);
+    resetConfirmIfNeeded(c);
+    log(c, `${verb('Снял','Сняла')} пометку замены с ${it.mark}: возврат в «${back}».`, 'unmark_replace');
+    render();
+  },
+  editOpen(itemId){ ui.editFor.add(itemId); render(); },
+  editClose(itemId){ ui.editFor.delete(itemId); render(); },
+  /* изменение маркировки, количества и единицы (раздел 38.1) */
+  doEdit(num, itemId){
+    const c = byNum(num), it = c.items.find(i => i.id === itemId);
+    if (!it) return;
+    const mark = document.getElementById('ed-mark-'+itemId).value.trim();
+    const qty  = parseFloat((document.getElementById('ed-qty-'+itemId).value||'').replace(',','.'));
+    const unit = document.getElementById('ed-unit-'+itemId).value;
+    if (!mark){ alert('Укажите маркировку.'); return; }
+    if (!(qty > 0)){ alert('Укажите количество больше нуля.'); return; }
+    if (mark === it.mark && round2(qty) === it.qty && unit === it.unit){ ui.editFor.delete(itemId); render(); return; }
+    const was = `${it.mark} — ${it.qty} ${it.unit}`;
+    const late = isPostAssembly(c);
+    pushUndo(`изменение позиции ${it.mark} в чеке №${num}`, num);
+    // остаток возвращается по старым данным и списывается заново по новым
+    const wasDeducted = it.deducted, from = it.deductedFrom;
+    refund(it);
+    ensureProduct(mark, unit);
+    it.mark = mark; it.qty = round2(qty); it.unit = unit;
+    if (wasDeducted) deductFrom(it, from || c.store);
+    ui.editFor.delete(itemId);
+    resetConfirmIfNeeded(c);
+    log(c, `${verb('Изменил','Изменила')} позицию: ${was} → ${mark} — ${it.qty} ${it.unit}.`
+           + (late ? ' Заказ уже собран.' : ''), late ? 'edit_item_late' : 'edit_item');
+    render();
+  },
+  replOpen(itemId){ ui.replFor.add(itemId); render(); },
+  replClose(itemId){ ui.replFor.delete(itemId); render(); },
+  replFieldsChanged(itemId){
+    const st = document.getElementById('rp-st-'+itemId).value;
+    const w = document.getElementById('rp-srcwrap-'+itemId);
+    if (w) w.style.display = (st===ST.MOVE) ? 'block' : 'none';
+    const name = document.getElementById('rp-mark-'+itemId).value;
+    const p = prodByName(name);
+    if (p) document.getElementById('rp-unit-'+itemId).value = p.unit;
+    const hint = document.getElementById('rp-hint-'+itemId);
+    if (hint) hint.textContent = p ? stocksLine(name)
+      : (name.trim() ? 'Новое наименование — попадёт в справочник товаров.' : '');
+  },
+  /* выполнение замены — по образцу «Разделить позицию» (раздел 37.2) */
+  doReplace(num, itemId){
+    const c = byNum(num), it = c.items.find(i => i.id === itemId);
+    if (!it) return;
+    const mark = document.getElementById('rp-mark-'+itemId).value.trim();
+    const qty  = parseFloat((document.getElementById('rp-qty-'+itemId).value||'').replace(',','.'));
+    const unit = document.getElementById('rp-unit-'+itemId).value;
+    const st   = document.getElementById('rp-st-'+itemId).value;
+    const srcEl= document.getElementById('rp-src-'+itemId);
+    if (!mark){ alert('Укажите маркировку новой ткани.'); return; }
+    if (!(qty > 0)){ alert('Укажите количество больше нуля.'); return; }
+    if (st === ST.MOVE && (!srcEl || !srcEl.value)){ alert('Укажите магазин-источник.'); return; }
+    pushUndo(`замена позиции ${it.mark} в чеке №${num}`, num);
+    ensureProduct(mark, unit);
+    const ni = mkItem(mark, round2(qty), unit, st, st===ST.MOVE ? srcEl.value : null,
+                      {replaces: it.id, addedLate: it.addedLate});
+    if (st === ST.AVAIL) deductFrom(ni, c.store);
+    it.replacedBy = ni.id;
+    it.status = ST.REPL;                    // исходная остаётся помеченной и зачёркнутой
+    c.items.splice(c.items.indexOf(it) + 1, 0, ni);
+    ui.replFor.delete(itemId);
+    resetConfirmIfNeeded(c);
+    log(c, `${verb('Заменил','Заменила')} ${it.mark} на ${mark} — ${round2(qty)} ${unit}, состояние «${st}»`
+           + (st===ST.MOVE ? ` (из: ${storeName(srcEl.value)}).` : '.'), 'replace');
+    render();
+  },
+  fltToggle(){ ui.fltOpen = !ui.fltOpen; render(); },
+  fltApply(){ ui.fltOpen = false; render(); window.scrollTo({top:0, behavior:'smooth'}); },
+  listMode(m){
+    listMode = m;
+    try { localStorage.setItem(MODEKEY, m); } catch(e){}
+    render();
+  },
+  fltSet(k, v){
+    flt[k] = (k === 'archive') ? !!v : v;
+    if (k === 'store') filterStore = v;
+    render();
+  },
+  fltClear(k){ flt[k] = (k === 'archive') ? false : 'all'; if (k==='store') filterStore='all'; render(); },
+  fltReset(){
+    flt = { store:'all', seam:'all', mgr:'all', stage:'all', istat:'all', archive:false };
+    filterStore = 'all'; render();
+  },
+  search(v){ query = v.trim().toLowerCase(); render(); },
+  undo(){ doUndo(); },
+
+  setStatus(num, itemId, val){
+    const c = byNum(num), it = c.items.find(i=>i.id===itemId);
+    if (!val || val===it.status) return;
+    pushUndo(`изменение состояния ${it.mark} в чеке №${num}`, num);
+    const old = it.status;
+    if (val===ST.MOVE && !it.src) it.src = firstOtherStore(c.store);
+    it.status = val;
+    if (old===ST.MOVE && val!==ST.MOVE && val!==ST.RECV) it.src = null;
+    let kind='status';
+    if (val===ST.REPL){                       // пометка к замене: помним, откуда пришли (раздел 37.1)
+      it.prevStatus = old; refund(it); kind='mark_replace';
+    }
+    else if (val===ST.AVAIL && !it.deducted) deductFrom(it, c.store);
+    else if (val===ST.RECV && old===ST.MOVE){ if(!it.deducted) deductFrom(it, it.src); kind='received_move'; }
+    else if (val===ST.RECV && old===ST.ORDERED){ kind='received_order'; }
+    else if ([ST.ORDER, ST.ORDERED, ST.MOVE].includes(val)) refund(it);
+    resetConfirmIfNeeded(c);
+    log(c, `${verb('Изменил','Изменила')} ${it.mark}: ${old} → ${val}` + (val===ST.MOVE?` (из: ${storeName(it.src)}).`:'.'), kind);
+    render();
+  },
+  setSrc(num, itemId, sid){
+    const c = byNum(num), it = c.items.find(i=>i.id===itemId);
+    pushUndo(`смена источника для ${it.mark} в чеке №${num}`, num);
+    it.src = sid; log(c, `${verb('Указал','Указала')} источник для ${it.mark}: ${storeName(sid)}.`,'src'); render();
+  },
+  delItem(num, itemId){
+    const c = byNum(num), it = c.items.find(i=>i.id===itemId);
+    if (!confirm(`Удалить позицию ${it.mark}?`)) return;
+    pushUndo(`удаление позиции ${it.mark} из чека №${num}`, num);
+    refund(it);
+    c.items = c.items.filter(i=>i.id!==itemId);
+    resetConfirmIfNeeded(c);
+    log(c, `${verb('Удалил','Удалила')} позицию ${it.mark} — ${it.qty} ${it.unit}.`
+           + (isPostAssembly(c) ? ' Заказ уже собран.' : ''),
+        isPostAssembly(c) ? 'del_item_late' : 'del_item');
+    render();
+  },
+  openSplit(itemId){ ui.splitFor.add(itemId); render(); },
+  doSplit(num, itemId){
+    const c = byNum(num), it = c.items.find(i=>i.id===itemId);
+    const inp = document.getElementById('split-'+itemId);
+    const got = parseFloat((inp.value||'').replace(',','.'));
+    if (!(got>0) || got>=it.qty){ alert('Укажите полученное количество меньше '+it.qty); return; }
+    pushUndo(`разделение позиции ${it.mark} в чеке №${num}`, num);
+    const fromQ = it.qty;
+    const rest = round2(fromQ - got);
+    const oldSt = it.status;
+    const tail = mkItem(it.mark, rest, it.unit, oldSt, it.src, {fromQty:fromQ});
+    it.qty = got; it.status = ST.RECV; it.fromQty = fromQ;
+    if (oldSt===ST.MOVE && !it.deducted) deductFrom(it, it.src);
+    c.items.splice(c.items.indexOf(it)+1, 0, tail);
+    ui.splitFor.delete(itemId);
+    resetConfirmIfNeeded(c);
+    const waitWord = oldSt===ST.MOVE ? 'довезти' : 'ожидается';
+    log(c, `${verb('Разделил','Разделила')} ${it.mark}: получено ${got} из ${fromQ} ${it.unit}, ${waitWord} ${rest} ${it.unit}.`,'split');
+    render();
+  },
+
+  openAdd(num){ ui.addForm.add(num); render(); },
+  closeAdd(num){ ui.addForm.delete(num); render(); },
+  addFieldsChanged(num){
+    const c = byNum(num);
+    const st = document.getElementById('a-st-'+num).value;
+    document.getElementById('a-srcwrap-'+num).style.display = (st===ST.MOVE)?'block':'none';
+    const name = document.getElementById('a-mark-'+num).value;
+    const p = prodByName(name);
+    if (p) document.getElementById('a-unit-'+num).value = p.unit;
+    const hint = document.getElementById('a-hint-'+num);
+    hint.textContent = p ? stocksLine(name)
+      : (name.trim() ? 'Новое наименование — попадёт в справочник товаров.' : '');
+    const srcSel = document.getElementById('a-src-'+num);
+    if (srcSel){
+      const cur = srcSel.value;
+      srcSel.innerHTML = '<option value="">Откуда (магазин-источник)</option>' +
+        STORES.filter(s=>s.active && s.id!==c.store)
+          .map(s=>`<option value="${s.id}" ${s.id===cur?'selected':''}>${esc(s.name)}${stockLabel(name,s.id)}</option>`).join('');
+    }
+  },
+  addItem(num){
+    const c = byNum(num);
+    const mark = document.getElementById('a-mark-'+num).value.trim();
+    const qty  = parseFloat((document.getElementById('a-qty-'+num).value||'').replace(',','.'));
+    const unit = document.getElementById('a-unit-'+num).value;
+    const st   = document.getElementById('a-st-'+num).value;
+    const src  = st===ST.MOVE ? document.getElementById('a-src-'+num).value : null;
+    if (!mark || !(qty>0)){ alert('Заполните маркировку и количество.'); return; }
+    if (st===ST.MOVE && !src){ alert('Для «Переместить» укажите магазин-источник.'); return; }
+    const late = isPostAssembly(c);          // добавлена после сборки (раздел 38.2)
+    pushUndo(`добавление позиции ${mark} в чек №${num}`, num);
+    ensureProduct(mark, unit);
+    const it = mkItem(mark, qty, unit, st, src, {addedLate: late});
+    if (st===ST.AVAIL) deductFrom(it, c.store);
+    c.items.push(it);
+    ui.addForm.delete(num);
+    resetConfirmIfNeeded(c);
+    log(c, `${verb('Добавил','Добавила')} ${mark} — ${qty} ${unit}. Состояние: ${st}`
+           + (src?` (из: ${storeName(src)})`:'') + (late?' — после сборки заказа.':'.'),
+        late ? 'add_item_late' : 'add_item');
+    render();
+  },
+
+  confirmAvail(num){
+    const c = byNum(num);
+    if (replItems(c).length){               // раздел 9.3 — заменённые позиции сюда уже не входят
+      alert('Есть позиции, помеченные к замене. Сначала выполните замену или снимите пометку.'); return;
+    }
+    if (!confirm('Проверьте наличие всех тканей по этому чеку.\nПосле подтверждения заказ будет готов к сборке.')) return;
+    pushUndo(`подтверждение наличия по чеку №${num}`, num);
+    c.confirmed = true; log(c, `${verb('Подтвердил','Подтвердила')} наличие всех тканей.`,'confirm'); render();
+  },
+  assemble(num){
+    const c = byNum(num);
+    const sel = document.getElementById('sew-'+num);
+    const sid = sel.value || null;
+    pushUndo(`сборка заказа №${num}`, num);
+    c.seamstressId = sid;
+    if (sid && isNoSew(sid)){
+      // решение Р9: пошив не требуется — сразу «Готов к выдаче», минуя «Собран» и «В пошиве»
+      c.skippedSewing = true; c.manual = 'ready_to_issue';
+      log(c, `${verb('Собрал','Собрала')} заказ. Пошив не требуется — сразу готов к выдаче.`,'assemble');
+    } else {
+      c.skippedSewing = false; c.manual = 'assembled';
+      log(c, `${verb('Собрал','Собрала')} заказ. ` +
+             (sid ? `Швея: ${seamName(sid)}.` : 'Швея не назначена.'),'assemble');
+    }
+    render();
+  },
+  toSewing(num){ pushUndo(`передача заказа №${num} в пошив`, num);
+    const c=byNum(num); c.manual='in_sewing'; log(c, `${verb('Передал','Передала')} заказ в пошив.`,'sew'); render(); },
+  ready(num){ pushUndo(`готовность заказа №${num}`, num);
+    const c=byNum(num); c.manual='ready_to_issue'; log(c, `${verb('Отметил','Отметила')} заказ как готовый.`,'ready'); render(); },
+  issue(num){ pushUndo(`выдача заказа №${num}`, num);
+    const c=byNum(num); c.manual='issued'; c.archivedAt=todayISO();
+    log(c, `${verb('Выдал','Выдала')} заказ клиенту.`,'issue'); ui.expanded.delete(num); render(); },
+
+  openCancel(num){ ui.cancelForm.add(num); render(); },
+  closeCancel(num){ ui.cancelForm.delete(num); render(); },
+  doCancel(num){
+    const c = byNum(num);
+    const reason = document.getElementById('cr-'+num).value.trim();
+    if (!reason){ alert('Причина отмены — обязательное поле.'); return; }
+    pushUndo(`отмена чека №${num}`, num);
+    c.items.forEach(refund);
+    c.manual='cancelled'; c.cancelReason=reason; c.archivedAt=todayISO();
+    ui.cancelForm.delete(num); ui.expanded.delete(num);
+    log(c, `${verb('Отменил','Отменила')} чек. Причина: ${reason}.`,'cancel'); render();
+  },
+
+  /* товары */
+  prodAddToggle(){ ui.prodAdd=!ui.prodAdd; render(); },
+  prodAddDo(){
+    const name = document.getElementById('np-name').value.trim();
+    const unit = document.getElementById('np-unit').value;
+    const sid  = document.getElementById('np-store').value;
+    const sv   = document.getElementById('np-stock').value.trim();
+    if (!name){ alert('Укажите наименование.'); return; }
+    if (prodByName(name)){ alert('Такой товар уже есть в справочнике. Для прихода используйте «Оприходовать».'); return; }
+    const pieces = parsePieces(sv);
+    if (pieces===undefined){ alert('Количество — число или куски через «+», напр. 5+7+25.'); return; }
+    pushUndo(`добавление товара «${name}»`, null);
+    const stocks = {};
+    if (pieces!==null && sid) stocks[sid] = pieces;
+    products.push({id:npid(), name, unit, stocks});
+    ui.prodAdd=false; render();
+    toast(pieces!==null ? `Оприходовано: ${name} — ${pieces.reduce((a,b)=>a+b,0)} ${unit} на ${storeName(sid)}` : 'Товар добавлен: '+name);
+  },
+  prodRecvToggle(id){ ui.prodRecv.has(id) ? ui.prodRecv.delete(id) : ui.prodRecv.add(id); render(); },
+  prodRecvDo(id){
+    const p = products.find(x=>x.id===id);
+    const sid = document.getElementById('pr-store-'+id).value;
+    const pieces = parsePieces(document.getElementById('pr-qty-'+id).value);
+    if (!sid){ alert('Выберите магазин.'); return; }
+    if (pieces===undefined || pieces===null || !pieces.length || pieces.some(x=>!(x>0))){
+      alert('Приход — положительное число или куски через «+», напр. 12+8.'); return; }
+    pushUndo(`приход «${p.name}» на ${storeName(sid)}`, null);
+    if (!hasStock(p,sid)) p.stocks[sid]=[];
+    p.stocks[sid].push(...pieces);
+    ui.prodRecv.delete(id); render();
+    toast(`Оприходовано: ${p.name} +${pieces.reduce((a,b)=>a+b,0)} ${p.unit} → ${storeName(sid)} (итого ${stockTotal(p,sid)} ${p.unit})`);
+  },
+  prodEditToggle(id){ ui.prodEdit.has(id) ? ui.prodEdit.delete(id) : ui.prodEdit.add(id); render(); },
+  prodSave(id){
+    const p = products.find(x=>x.id===id);
+    const unit = document.getElementById('pe-unit-'+id).value;
+    const ns = {};
+    for (const s of STORES){
+      const v = document.getElementById('pe-stock-'+id+'-'+s.id).value;
+      const pieces = parsePieces(v);
+      if (pieces===undefined){ alert('Остаток в «'+s.name+'» — число или куски через «+», либо пусто.'); return; }
+      if (pieces!==null) ns[s.id] = pieces;
+    }
+    pushUndo(`корректировка остатков «${p.name}»`, null);
+    p.unit = unit; p.stocks = ns;
+    ui.prodEdit.delete(id); render(); toast('Сохранено: '+p.name);
+  },
+  prodDel(id){
+    const p = products.find(x=>x.id===id);
+    const used = checks.reduce((n,c)=>n + c.items.filter(i=>i.mark.toLowerCase()===p.name.toLowerCase()).length, 0);
+    const msg = used
+      ? `«${p.name}» встречается в ${used} позици${used===1?'и':'ях'} чеков. Удалить из справочника? Чеки не изменятся.`
+      : `Удалить «${p.name}» из справочника?`;
+    if (!confirm(msg)) return;
+    pushUndo(`удаление товара «${p.name}»`, null);
+    products = products.filter(x=>x.id!==id);
+    render(); toast('Удалено: '+p.name);
+  },
+
+  /* статистика */
+  stSet(k,v){ ui[k]=v; render(); },
+
+  /* импорт товаров из Excel */
+  excelPick(){ document.getElementById('excelFile').click(); },
+};
+window.act = act;
+
+/* Разбор строк из Excel/CSV. Правила:
+   — ищем строку заголовков с колонкой наименования (наимен/назван/товар/маркир);
+     если её нет — считаем, что весь первый столбец это наименования;
+   — колонка «Ед.» (ед/единиц) → м или шт;
+   — колонки, названные как магазины, → остатки этого магазина (число или куски «5+7+25»);
+   — безымянная колонка количества (остаток/кол-во) → остаток первого активного магазина;
+   — новые товары добавляются; для уже существующих приложение предлагает
+     ОБНОВИТЬ остатки значениями из файла: перезаписываются только магазины
+     с заполненными ячейками, пустая ячейка текущий остаток не трогает;
+   — весь импорт отменяется одной кнопкой ↶. */
+function importProductRows(rows){
+  rows = (rows||[]).map(r => Array.isArray(r) ? r : [r])
+    .filter(r => r.some(c => String(c==null?'':c).trim() !== ''));
+  if (!rows.length){ alert('Файл пуст или не удалось прочитать данные.'); return; }
+  const low = x => String(x==null?'':x).trim().toLowerCase();
+  const head = rows[0].map(low);
+  const nameCol = head.findIndex(h => /наимен|назван|товар|маркир|name/.test(h));
+  let unitCol = -1, storeCols = [], qtyCol = -1, dataRows;
+  if (nameCol >= 0){
+    unitCol = head.findIndex(h => /^ед\.?$|единиц|unit/.test(h));
+    STORES.forEach(s => { const i = head.findIndex(h => h === s.name.toLowerCase());
+      if (i >= 0) storeCols.push({sid:s.id, i}); });
+    qtyCol = head.findIndex((h,i) => /остат|кол-?во|колич|qty/.test(h) && !storeCols.some(sc => sc.i === i));
+    dataRows = rows.slice(1);
+  } else { dataRows = rows; }
+  const nCol = nameCol >= 0 ? nameCol : 0;
+  const qtyStore = (STORES.find(s => s.active) || {}).id;
+  let noname = 0, dupInFile = 0, existNoData = 0;
+  const seen = new Set(); const newProducts = []; const updates = [];
+  dataRows.forEach(r => {
+    const name = String(r[nCol]==null?'':r[nCol]).trim();
+    if (!name){ noname++; return; }
+    const key = name.toLowerCase();
+    if (seen.has(key)){ dupInFile++; return; }
+    seen.add(key);
+    let unit = 'м';
+    if (unitCol >= 0 && /шт/.test(low(r[unitCol]))) unit = 'шт';
+    const stocks = {};
+    storeCols.forEach(sc => { const p = parsePieces(String(r[sc.i]==null?'':r[sc.i]));
+      if (p && p.length){ stocks[sc.sid] = p; } });
+    if (!Object.keys(stocks).length && qtyCol >= 0 && qtyStore){
+      const p = parsePieces(String(r[qtyCol]==null?'':r[qtyCol]));
+      if (p && p.length){ stocks[qtyStore] = p; } }
+    const existing = prodByName(name);
+    if (existing){
+      if (Object.keys(stocks).length) updates.push({p:existing, stocks});
+      else existNoData++;
+    } else {
+      newProducts.push({id:npid(), name, unit, stocks});
+    }
+  });
+  if (!newProducts.length && !updates.length){
+    alert('Ничего не изменилось: новых товаров в файле нет'
+      + (existNoData ? ', а для существующих (' + existNoData + ') нет данных об остатках' : '')
+      + '.' + (noname ? '\nСтрок без названия: ' + noname : ''));
+    return;
+  }
+  let doUpdates = false;
+  if (updates.length){
+    doUpdates = confirm('В файле есть остатки для ' + updates.length + ' товар(ов), которые уже есть в справочнике.\n\n'
+      + 'Обновить их остатки значениями из файла?\n'
+      + 'Перезаписываются только магазины с заполненными ячейками; пустая ячейка текущий остаток не трогает.\n\n'
+      + 'ОК — обновить · Отмена — оставить как есть (новые товары добавятся в любом случае).');
+  }
+  if (!newProducts.length && !doUpdates){
+    alert('Импорт отменён: новых товаров нет, обновление остатков отклонено.');
+    return;
+  }
+  const descParts = [];
+  if (newProducts.length) descParts.push('новых: ' + newProducts.length);
+  if (doUpdates) descParts.push('обновлено остатков: ' + updates.length);
+  pushUndo('импорт товаров из Excel (' + descParts.join(', ') + ')', null);
+  products.push(...newProducts);
+  if (doUpdates) updates.forEach(u => {
+    Object.entries(u.stocks).forEach(([sid, pieces]) => { u.p.stocks[sid] = pieces; });
+  });
+  render();
+  const stockedNew = newProducts.filter(p => Object.keys(p.stocks).length).length;
+  alert('Импорт завершён.'
+    + '\nДобавлено новых товаров: ' + newProducts.length
+    + (stockedNew ? '\nИз них с остатками: ' + stockedNew
+        + (qtyCol >= 0 && !storeCols.length ? ' (магазин: ' + storeName(qtyStore) + ')' : '') : '')
+    + (updates.length ? '\nСуществующих с остатками в файле: ' + updates.length
+        + (doUpdates ? ' — остатки ОБНОВЛЕНЫ' : ' — оставлены без изменений') : '')
+    + (existNoData ? '\nСуществующих без данных об остатках: ' + existNoData : '')
+    + (dupInFile ? '\nПовторов внутри файла: ' + dupInFile : '')
+    + (noname ? '\nСтрок без названия: ' + noname : '')
+    + '\n\nОтменить импорт можно кнопкой ↶.');
+}
+
+/* резервная копия */
+act.backupExport = function(){
+    const data = {app:'textile-manager', version:6, exportedAt:new Date().toISOString(),
+      stores:STORES, users:USERS, seamstresses:SEAMSTRESSES, products, checks, iid, pid, cmc, sidc, swc};
+    const blob = new Blob([JSON.stringify(data,null,1)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'textile-manager-backup-'+todayISO()+'.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    toast('Резервная копия скачана.');
+};
+act.backupImportPick = function(){ document.getElementById('importFile').click(); };
+act.backupImport = function(file){
+    const r = new FileReader();
+    r.onload = () => {
+      let d;
+      try { d = JSON.parse(r.result); } catch(e){ alert('Файл не является корректной резервной копией.'); return; }
+      if (!d || d.app!=='textile-manager' || !Array.isArray(d.checks) || !Array.isArray(d.products)){
+        alert('Файл не является резервной копией Textile Manager.'); return; }
+      const when = d.exportedAt ? d.exportedAt.slice(0,10) : 'неизвестной даты';
+      if (!confirm('Загрузить копию от '+when+'? Текущие данные будут заменены (можно отменить кнопкой ↶).')) return;
+      pushUndo('загрузка резервной копии', null);
+      checks = d.checks; products = d.products;
+      iid = d.iid||1000; pid = d.pid||1000;
+      if (Array.isArray(d.stores)) STORES = d.stores;
+      if (Array.isArray(d.users))
+        USERS = d.users.map(u => typeof u === 'string' ? {name:u, role:'manager'} : u);
+      USERS.forEach(u => { if (!u.pin) u.pin = '0000'; });
+      if (!USERS.some(u => u.role === 'admin') && USERS.length) USERS[0].role = 'admin';
+      if (!USERS.some(u => u.owner)){
+        const art = USERS.find(u => u.name === 'Артур');
+        (art || USERS.find(u => u.role === 'admin') || USERS[0] || {}).owner = true;
+        const ow = USERS.find(u => u.owner); if (ow) ow.role = 'admin';
+      }
+      // копии версий 5 и ниже хранят швей списком имён — приводим к модели 2.4
+      migrateSeamstresses(d.seamstresses);
+      if (d.sidc) sidc = d.sidc; else sidc = STORES.length + 1;
+      if (d.swc) swc = Math.max(swc, d.swc);
+      cmc = d.cmc || 1;
+      migrateAll();
+      if (!USERS.some(u => u.name === currentUser)) currentUser = USERS[0].name;
+      authed = false; render(); showLogin(); toast('Резервная копия загружена. Войдите заново.');
+    };
+    r.readAsText(file);
+};
+
+
+/* ────────────────── админ: магазины, менеджеры, швеи ────────────────── */
+function storeInUse(sid){
+  return checks.some(c => c.store === sid || c.items.some(i => i.src === sid))
+      || products.some(p => hasStock(p, sid));
+}
+act.stAdd = function(){
+  const name = document.getElementById('ad-store-name').value.trim();
+  if (!name){ alert('Введите название магазина.'); return; }
+  if (STORES.some(s => s.name.toLowerCase() === name.toLowerCase())){ alert('Магазин с таким названием уже есть.'); return; }
+  pushUndo('добавление магазина «' + name + '»', null);
+  STORES.push({id:nsid(), name, active:true});
+  render(); toast('Магазин добавлен: ' + name);
+};
+act.stRename = function(sid){
+  const s = STORES.find(x => x.id === sid);
+  const name = document.getElementById('ad-sname-' + sid).value.trim();
+  if (!name){ alert('Название не может быть пустым.'); return; }
+  if (name === s.name) return;
+  if (STORES.some(x => x.id !== sid && x.name.toLowerCase() === name.toLowerCase())){ alert('Магазин с таким названием уже есть.'); return; }
+  pushUndo('переименование магазина «' + s.name + '» → «' + name + '»', null);
+  s.name = name; render(); toast('Сохранено: ' + name);
+};
+act.stToggle = function(sid){
+  const s = STORES.find(x => x.id === sid);
+  if (s.active && STORES.filter(x => x.active).length <= 1){
+    alert('Нельзя приостановить последний активный магазин.'); return; }
+  pushUndo((s.active ? 'приостановка' : 'активация') + ' магазина «' + s.name + '»', null);
+  s.active = !s.active; render();
+  toast(s.name + (s.active ? ' активирован' : ' приостановлен'));
+};
+act.stDel = function(sid){
+  const s = STORES.find(x => x.id === sid);
+  if (storeInUse(sid)){
+    alert('«' + s.name + '» нельзя удалить: с ним связаны чеки или остатки. Используйте приостановку — история сохранится.'); return; }
+  if (s.active && STORES.filter(x => x.active).length <= 1){
+    alert('Нельзя удалить последний активный магазин.'); return; }
+  if (!confirm('Удалить магазин «' + s.name + '»? Он не связан ни с чеками, ни с остатками.')) return;
+  pushUndo('удаление магазина «' + s.name + '»', null);
+  STORES = STORES.filter(x => x.id !== sid);
+  render(); toast('Удалено: ' + s.name);
+};
+act.uAdd = function(){
+  const name = document.getElementById('ad-user-name').value.trim();
+  const role = document.getElementById('ad-user-role').value;
+  if (!name){ alert('Введите имя сотрудника.'); return; }
+  if (USERS.some(u => u.name.toLowerCase() === name.toLowerCase())){ alert('Сотрудник с таким именем уже есть.'); return; }
+  if (isOwnerNow()){
+    const pin = document.getElementById('ad-user-pin').value.trim();
+    if (!/^\d{4,8}$/.test(pin)){ alert('PIN — от 4 до 8 цифр.'); return; }
+    pushUndo('добавление сотрудника «' + name + '»', null);
+    USERS.push({id:TM_DB.dbNewId(), name, role, active:true});
+    render(); toast('Добавлен: ' + name + '. Сообщите ему PIN лично.');
+  } else {
+    pushUndo('добавление сотрудника «' + name + '»', null);
+    USERS.push({id:TM_DB.dbNewId(), name, role, active:true});
+    render(); toast('Добавлен: ' + name + '. Вход станет возможен после того, как владелец назначит PIN.');
+  }
+};
+act.uPin = function(i){
+  if (!isOwnerNow()){ alert('PIN-коды назначает и сбрасывает только владелец сети.'); return; }
+  const u = USERS[i];
+  const pin = prompt('Новый PIN для «' + u.name + '» (4–8 цифр).\nСтарый PIN перестанет действовать — сотрудник это заметит при входе.');
+  if (pin === null) return;
+  if (!/^\d{4,8}$/.test(pin.trim())){ alert('PIN — от 4 до 8 цифр.'); return; }
+  TM_DB.dbSetPin(u.name, pin.trim()).then(r => {
+    if (r.ok) toast('PIN обновлён: ' + u.name + '. Сообщите его лично.');
+    else alert(r.error);
+  });
+};
+act.uSave = function(i){
+  const u = USERS[i];
+  const name = document.getElementById('ad-uname-' + i).value.trim();
+  const role = document.getElementById('ad-urole-' + i).value;
+  if (!name){ alert('Имя не может быть пустым.'); return; }
+  if (USERS.some((x, j) => j !== i && x.name.toLowerCase() === name.toLowerCase())){ alert('Сотрудник с таким именем уже есть.'); return; }
+  if (u.owner && role !== 'admin'){ alert('Владельца сети нельзя понизить.'); return; }
+  if (u.role === 'admin' && role !== 'admin' && USERS.filter(x => x.role === 'admin').length <= 1){
+    alert('Должен остаться хотя бы один администратор.'); return; }
+  if (name === u.name && role === u.role) return;
+  pushUndo('изменение сотрудника «' + u.name + '»', null);
+  const wasCurrent = (u.name === currentUser);
+  u.name = name; u.role = role;
+  if (wasCurrent) currentUser = name;
+  render(); toast('Сохранено: ' + name + ' · история хранит прежнее имя');
+};
+act.uDel = function(i){
+  const u = USERS[i];
+  if (u.owner){ alert('Владельца сети нельзя удалить.'); return; }
+  if (u.role === 'admin' && USERS.filter(x => x.role === 'admin').length <= 1){
+    alert('Нельзя удалить последнего администратора.'); return; }
+  if (!confirm('Удалить сотрудника «' + u.name + '»? Его имя сохранится во всей истории операций.')) return;
+  pushUndo('удаление сотрудника «' + u.name + '»', null);
+  const wasCurrent = (currentUser === u.name);
+  USERS.splice(i, 1);
+  if (wasCurrent){ authed = false; currentUser = USERS[0].name; render(); showLogin(); toast('Удалён: ' + u.name); return; }
+  render(); toast('Удалён: ' + u.name);
+};
+act.swAdd = function(){
+  const name = document.getElementById('ad-sw-name').value.trim();
+  if (!name){ alert('Введите имя швеи.'); return; }
+  if (SEAMSTRESSES.some(s => s.name.toLowerCase() === name.toLowerCase())){ alert('Швея с таким именем уже есть.'); return; }
+  pushUndo('добавление швеи «' + name + '»', null);
+  // цвет подставляется автоматически; при исчерпании палитры допускается повтор (решение Р10)
+  let color = nextFreeColor(), warn = '';
+  if (!color){
+    color = SEW_COLORS[realSeams().length % SEW_COLORS.length].hex;
+    const own = colorOwner(color, null);
+    warn = own ? ' · цвет повторяется с «' + own.name + '»' : '';
+  }
+  SEAMSTRESSES.push({id:nswid(), name, color, noSewing:false, active:true});
+  render(); toast('Добавлена: ' + name + warn);
+};
+act.swColor = function(i){
+  const s = SEAMSTRESSES[i];
+  const hex = document.getElementById('ad-swcolor-' + i).value;
+  if (hex === s.color) return;
+  pushUndo('смена цвета швеи «' + s.name + '»', null);
+  s.color = hex;
+  const own = colorOwner(hex, s.id);   // повтор разрешён, но с предупреждением (решение Р10)
+  render();
+  toast(own ? 'Цвет изменён · такой же уже у «' + own.name + '»' : 'Цвет изменён: ' + s.name);
+};
+act.swSave = function(i){
+  const s = SEAMSTRESSES[i];
+  if (s.noSewing){ alert('Запись «Без пошива» переименовать нельзя.'); return; }
+  const old = s.name;
+  const name = document.getElementById('ad-swname-' + i).value.trim();
+  if (!name){ alert('Имя не может быть пустым.'); return; }
+  if (name === old) return;
+  if (SEAMSTRESSES.some((x, j) => j !== i && x.name.toLowerCase() === name.toLowerCase())){ alert('Швея с таким именем уже есть.'); return; }
+  pushUndo('переименование швеи «' + old + '» → «' + name + '»', null);
+  // чеки ссылаются по идентификатору (решение Р11) — новое имя подхватывается само
+  s.name = name;
+  render(); toast('Сохранено: ' + name + ' · история хранит прежнее имя');
+};
+act.swDel = function(i){
+  const s = SEAMSTRESSES[i];
+  if (s.noSewing){ alert('Запись «Без пошива» удалить нельзя.'); return; }
+  const used = checks.filter(c => c.seamstressId === s.id).length;
+  if (!confirm('Удалить швею «' + s.name + '»?' + (used ? ' Она указана в ' + used + ' чек(ах) — там имя и цвет сохранятся.' : ''))) return;
+  pushUndo('удаление швеи «' + s.name + '»', null);
+  // запись остаётся в справочнике как неактивная: чеки ссылаются на неё по идентификатору
+  if (used) s.active = false; else SEAMSTRESSES.splice(i, 1);
+  render(); toast('Удалена: ' + s.name);
+};
+function adminView(){
+  const storesCard = `<div class="statcard">
+    <h3>Магазины</h3>
+    <div class="pedit">
+      <input id="ad-store-name" placeholder="Название нового магазина" style="flex:1;min-width:160px">
+      <button class="linkbtn" onclick="act.stAdd()">Добавить</button>
+    </div>
+    ${STORES.map(s => `
+      <div class="pedit">
+        <input id="ad-sname-${s.id}" value="${esc(s.name)}" style="flex:1;min-width:120px">
+        <span class="hint" style="width:110px">${s.active ? 'активен' : 'приостановлен'}</span>
+        <button class="linkbtn" onclick="act.stRename('${s.id}')">Сохранить</button>
+        <button class="linkbtn" onclick="act.stToggle('${s.id}')">${s.active ? 'Приостановить' : 'Активировать'}</button>
+        <button class="linkbtn" onclick="act.stDel('${s.id}')">Удалить</button>
+      </div>`).join('')}
+    <div class="totline">Приостановленный магазин: новые чеки в нём не создаются, источником перемещения он быть не может, вся история и остатки видны. Удаление возможно только для магазина без чеков и остатков.</div>
+  </div>`;
+  const usersCard = `<div class="statcard">
+    <h3>Менеджеры</h3>
+    <div class="pedit">
+      <input id="ad-user-name" placeholder="Имя нового сотрудника" style="flex:1;min-width:130px">
+      <select id="ad-user-role"><option value="manager">менеджер</option><option value="admin">администратор</option></select>
+      ${isOwnerNow()
+        ? `<input id="ad-user-pin" class="stockin" inputmode="numeric" placeholder="PIN (4–8 цифр)">`
+        : `<span class="hint" style="width:150px">PIN назначит владелец</span>`}
+      <button class="linkbtn" onclick="act.uAdd()">Добавить</button>
+    </div>
+    ${USERS.map((u, i) => `
+      <div class="pedit">
+        <input id="ad-uname-${i}" value="${esc(u.name)}" style="flex:1;min-width:120px">
+        ${u.owner
+          ? `<span class="hint" style="width:150px">владелец сети · админ</span><select id="ad-urole-${i}" style="display:none"><option value="admin" selected></option></select>`
+          : `<select id="ad-urole-${i}">
+              <option value="manager" ${u.role === 'manager' ? 'selected' : ''}>менеджер</option>
+              <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>администратор</option>
+            </select>`}
+        ${u.pin ? '' : `<span class="hint">PIN не назначен</span>`}
+        <button class="linkbtn" onclick="act.uSave(${i})">Сохранить</button>
+        ${isOwnerNow() ? `<button class="linkbtn" onclick="act.uPin(${i})">${u.pin ? 'Сбросить PIN' : 'Назначить PIN'}</button>` : ''}
+        ${u.owner ? '' : `<button class="linkbtn" onclick="act.uDel(${i})">Удалить</button>`}
+      </div>`).join('')}
+    <div class="totline">Владелец сети всегда первый в списке; его нельзя удалить или понизить. PIN-коды назначает и сбрасывает только владелец; они нигде не показываются. Должен оставаться хотя бы один администратор. Переименование и удаление не меняют историю — в ней навсегда остаётся имя, под которым выполнялось действие.</div>
+  </div>`;
+  const swCard = `<div class="statcard">
+    <h3>Швеи</h3>
+    <div class="pedit">
+      <input id="ad-sw-name" placeholder="Имя новой швеи" style="flex:1;min-width:140px">
+      <button class="linkbtn" onclick="act.swAdd()">Добавить</button>
+    </div>
+    ${SEAMSTRESSES.map((s, i) => s.noSewing ? `
+      <div class="pedit">
+        <span class="hint" style="flex:1;font-style:italic">${esc(s.name)} — служебная запись: заказ собирается сразу в «Готов к выдаче». Не переименовывается и не удаляется.</span>
+      </div>` : `
+      <div class="pedit">
+        <span class="swdot" style="background:${s.color}" aria-hidden="true"></span>
+        <input id="ad-swname-${i}" value="${esc(s.name)}"
+               style="flex:1;min-width:110px;color:${s.color};font-weight:600">
+        <select id="ad-swcolor-${i}" onchange="act.swColor(${i})" style="min-width:112px">
+          ${SEW_COLORS.map(col => `<option value="${col.hex}" ${s.color===col.hex?'selected':''}>${col.name}</option>`).join('')}
+          ${SEW_COLORS.some(col=>col.hex===s.color) ? '' : `<option value="${s.color}" selected>свой цвет</option>`}
+        </select>
+        <button class="linkbtn" onclick="act.swSave(${i})">Сохранить</button>
+        <button class="linkbtn" onclick="act.swDel(${i})">Удалить</button>
+        ${colorOwner(s.color, s.id) ? `<div class="swwarn">Этот цвет уже назначен: ${esc(colorOwner(s.color, s.id).name)}</div>` : ''}
+      </div>${s.active===false ? '<div class="hint" style="padding:0 0 8px 22px">Не активна — остаётся ради старых чеков.</div>' : ''}`).join('')}
+    <div class="totline">Справочник общий для всех магазинов (решение Р2). Цвет назначается автоматически из палитры шести цветов и виден на правой кромке чека и в имени швеи. Чеки ссылаются на швею по идентификатору, поэтому переименование подхватывается везде само; история сохраняет прежнее имя.</div>
+  </div>`;
+  return storesCard + usersCard + swCard;
+}
+
+/* ────────────────── отрисовка: чеки ────────────────── */
+/* чипы активных фильтров: каждый снимается нажатием (раздел 20) */
+function chipsHTML(){
+  const keys = ['store','seam','mgr','stage','istat'].filter(k => flt[k] !== 'all');
+  if (flt.archive) keys.push('archive');
+  if (!keys.length) return '';
+  const chips = keys.map(k => {
+    const col = fltColor(k);
+    return `<button class="chip on" onclick="act.fltClear('${k}')" title="Снять фильтр"
+             ${col ? `style="border-color:${col};color:${col}"` : ''}>${esc(fltLabel(k))} ✕</button>`;
+  }).join('');
+  return chips + (keys.length > 1
+    ? `<button class="chip" onclick="act.fltReset()">Сбросить всё</button>` : '');
+}
+
+/* панель фильтров */
+function fpanelHTML(){
+  const opt = (v, label, sel, style='') =>
+    `<option value="${esc(v)}" ${sel?'selected':''} ${style}>${esc(label)}</option>`;
+  const stores = STORES.map(s => opt(s.id, s.name + (s.active?'':' · приостановлен'), flt.store===s.id)).join('');
+  const seams  = realSeams().map(s => opt(s.id, s.name, flt.seam===s.id)).join('');
+  const mgrs   = USERS.map(u => opt(u.name, u.name, flt.mgr===u.name)).join('');
+  const stages = Object.entries(STAGES).map(([k,v]) => opt(k, v.label, flt.stage===k)).join('');
+  const istats = Object.values(ST).map(v => opt(v, v, flt.istat===v)).join('');
+  const n = fltResultCount();
+  return `
+    <div class="frow"><label for="f-store">Магазин</label>
+      <select id="f-store" onchange="act.fltSet('store', this.value)">
+        ${opt('all','Все магазины', flt.store==='all')}${stores}</select></div>
+    <div class="frow"><label for="f-seam">Швея</label>
+      <select id="f-seam" onchange="act.fltSet('seam', this.value)">
+        ${opt('all','Все', flt.seam==='all')}${seams}
+        ${opt(NO_SEW_ID,'Без пошива', flt.seam===NO_SEW_ID)}
+        ${opt('none','Швея не назначена', flt.seam==='none')}</select></div>
+    <div class="frow"><label for="f-mgr">Менеджер</label>
+      <select id="f-mgr" onchange="act.fltSet('mgr', this.value)">
+        ${opt('all','Все', flt.mgr==='all')}${mgrs}</select></div>
+    <div class="frow"><label for="f-stage">Этап чека</label>
+      <select id="f-stage" onchange="act.fltSet('stage', this.value)">
+        ${opt('all','Любой', flt.stage==='all')}${stages}</select></div>
+    <div class="frow"><label for="f-istat">Позиция</label>
+      <select id="f-istat" onchange="act.fltSet('istat', this.value)">
+        ${opt('all','Любое состояние', flt.istat==='all')}${istats}</select></div>
+    <label class="fswitch">
+      <input type="checkbox" id="f-arch" ${flt.archive?'checked':''} onchange="act.fltSet('archive', this.checked)">
+      <span>Искать в архиве — выданные и отменённые</span></label>
+    <button class="fapply${n ? '' : ' none'}" onclick="act.fltApply()">${
+      n ? `Показать ${n} ${plChecks(n)}` : 'Ничего не найдено'}</button>
+    <button class="fclear" onclick="act.fltReset()">Сбросить все фильтры</button>
+    <div class="hint">Фильтр применяется сразу — кнопка выше просто сворачивает панель и показывает результат.<br>Менеджер — тот, кто создал чек. Этап чека и состояние позиции — независимые фильтры.</div>`;
+}
+
+function partNote(it){
+  if (!it.fromQty) return '';
+  if (it.status===ST.RECV)    return `получено ${it.qty} из ${it.fromQty} ${it.unit}`;
+  if (it.status===ST.MOVE)    return `довезти ${it.qty} из ${it.fromQty} ${it.unit}`;
+  if (it.status===ST.ORDERED || it.status===ST.ORDER) return `ожидается ${it.qty} из ${it.fromQty} ${it.unit}`;
+  return '';
+}
+
+function itemRow(c, it, editable){
+  const canSplit = editable && !isPostAssembly(c) && (it.status===ST.ORDERED || it.status===ST.MOVE);
+  const note = partNote(it);
+  const isRepl    = it.status === ST.REPL;
+  const isReplaced= !!it.replacedBy;                       // уже заменена — остаётся зачёркнутой
+  const newItem   = isReplaced ? c.items.find(i => i.id === it.replacedBy) : null;
+  const isLate    = it.addedLate && !isReplaced;
+  const lateOk    = isLate && SETTLED.includes(it.status);
+  const cls = ['item', isRepl?'repl':'', isReplaced?'replaced':'', it.replaces?'isnew':'',
+               isLate?'late':'', lateOk?'settled':''].filter(Boolean).join(' ');
+  let html = `<div class="${cls}">
+    <span class="imark">${esc(it.mark)}</span>
+    <span class="iqty">${it.qty} ${it.unit}</span>`;
+  if (editable){
+    const opts = [it.status, ...TRANS[it.status]];
+    html += `<select aria-label="Состояние позиции ${esc(it.mark)}" onchange="act.setStatus('${c.num}','${it.id}',this.value)">`
+      + opts.map((o,i)=>`<option ${i===0?'selected':''}>${o}</option>`).join('') + `</select>`;
+    if (note) html += `<div class="ipart">· ${note}</div>`;
+    if (it.status===ST.MOVE){
+      html += `<span class="isrc">из:
+        <select id="src-${it.id}" aria-label="Источник перемещения" onchange="act.setSrc('${c.num}','${it.id}',this.value)">`
+        + STORES.filter(s=>s.active && s.id!==c.store)
+            .map(s=>`<option value="${s.id}" ${s.id===it.src?'selected':''}>${esc(s.name)}${stockLabel(it.mark,s.id)}</option>`).join('')
+        + `</select></span>`;
+    }
+    html += `<div class="itools">`;
+    if (canSplit && !isRepl) html += `<button class="linkbtn" onclick="act.openSplit('${it.id}')">Разделить (пришла часть)</button>`;
+    if (isRepl && !isReplaced){
+      html += `<button class="linkbtn" onclick="act.replOpen('${it.id}')">Выполнить замену</button>
+               <button class="linkbtn" onclick="act.unmarkReplace('${c.num}','${it.id}')">Отменить пометку</button>`;
+    }
+    if (!isReplaced && !isRepl) html += `<button class="linkbtn" onclick="act.editOpen('${it.id}')">Изменить</button>`;
+    if (!isReplaced) html += `<button class="linkbtn" onclick="act.delItem('${c.num}','${it.id}')">Удалить</button>`;
+    html += `</div>`;
+    if (ui.splitFor.has(it.id)){
+      html += `<div class="splitrow">Получено:
+        <input id="split-${it.id}" inputmode="decimal" placeholder="из ${it.qty}">
+        <span>из ${it.qty} ${it.unit}</span>
+        <button class="linkbtn" onclick="act.doSplit('${c.num}','${it.id}')">ОК</button></div>`;
+    }
+  } else {
+    html += `<span class="istatic">${it.status}${it.status===ST.MOVE && it.src ? ' (из: '+esc(storeName(it.src))+')' : ''}${note? '<br>'+note:''}</span>`;
+  }
+  // подписи о замене
+  if (isReplaced && newItem)
+    html += `<div class="replnote was">заменена на ${esc(newItem.mark)} — ${newItem.qty} ${newItem.unit}</div>`;
+  else if (isRepl)
+    html += `<div class="replnote">требуется замена — согласуйте с клиентом</div>`;
+  if (it.replaces){
+    const src = c.items.find(i => i.id === it.replaces);
+    if (src) html += `<div class="replnote was">взамен ${esc(src.mark)}</div>`;
+  }
+  if (isLate)
+    html += `<div class="replnote" style="color:${lateOk?'var(--muted)':'#B26A00'};font-weight:${lateOk?'400':'600'}">${
+      lateOk ? 'позиция закрыта — выдачу не задерживает'
+             : 'добавлена после сборки — выдача заблокирована, пока не будет «В наличии» или «Получено»'}</div>`;
+  // форма правки позиции
+  if (ui.editFor.has(it.id) && !isReplaced){
+    html += `<div class="editform">
+      <div class="formtitle">Изменить позицию</div>
+      <input id="ed-mark-${it.id}" list="markList" value="${esc(it.mark)}" placeholder="Маркировка" autocomplete="off">
+      <div class="row">
+        <input class="qty" id="ed-qty-${it.id}" inputmode="decimal" value="${it.qty}" placeholder="Кол-во">
+        <select class="unit" id="ed-unit-${it.id}">
+          <option ${it.unit==='м'?'selected':''}>м</option><option ${it.unit==='шт'?'selected':''}>шт</option></select>
+      </div>
+      <div class="row">
+        <button class="ghost" style="flex:1" onclick="act.editClose('${it.id}')">Отмена</button>
+        <button class="primary" style="flex:1" onclick="act.doEdit('${c.num}','${it.id}')">Сохранить</button>
+      </div>
+      ${it.deducted ? '<div class="hint">Остаток по прежним данным вернётся на склад, по новым — спишется заново.</div>' : ''}
+    </div>`;
+  }
+  // форма замены
+  if (ui.replFor.has(it.id) && !isReplaced){
+    const others = STORES.filter(x => x.active && x.id !== c.store);
+    html += `<div class="replform">
+      <div class="formtitle">Замена «${esc(it.mark)}» — новая ткань</div>
+      <input id="rp-mark-${it.id}" list="markList" placeholder="Маркировка — начните вводить"
+             oninput="act.replFieldsChanged('${it.id}')" autocomplete="off">
+      <div class="stockhint" id="rp-hint-${it.id}"></div>
+      <div class="row">
+        <input class="qty" id="rp-qty-${it.id}" inputmode="decimal" placeholder="Кол-во" value="${it.qty}">
+        <select class="unit" id="rp-unit-${it.id}">
+          <option ${it.unit==='м'?'selected':''}>м</option><option ${it.unit==='шт'?'selected':''}>шт</option></select>
+        <select id="rp-st-${it.id}" onchange="act.replFieldsChanged('${it.id}')">
+          <option>${ST.AVAIL}</option><option>${ST.ORDER}</option><option>${ST.MOVE}</option></select>
+      </div>
+      <div id="rp-srcwrap-${it.id}" style="display:none;margin-top:8px">
+        <select id="rp-src-${it.id}">
+          <option value="">Откуда (магазин-источник)</option>
+          ${others.map(x => `<option value="${x.id}">${esc(x.name)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="row">
+        <button class="ghost" style="flex:1" onclick="act.replClose('${it.id}')">Отмена</button>
+        <button class="primary" style="flex:1" onclick="act.doReplace('${c.num}','${it.id}')">Заменить</button>
+      </div>
+      <div class="hint">Исходная позиция останется зачёркнутой со ссылкой на новую — чтобы при разговоре с клиентом было видно, что обещали изначально.</div>
+    </div>`;
+  }
+  html += itemCmtHTML(c, it);
+  return html + `</div>`;
+}
+
+function actionsHTML(c){
+  const stg = stageOf(c);
+  const cancelBtn = `<button class="danger" onclick="act.openCancel('${c.num}')">Отменить чек</button>`;
+  const cancelForm = ui.cancelForm.has(c.num) ? `
+    <div class="cancelform">
+      <div class="formtitle">Отмена чека — укажите причину (обязательно)</div>
+      <input id="cr-${c.num}" placeholder="Например: клиент отказался">
+      <div class="row" style="display:flex;gap:8px">
+        <button class="ghost" onclick="act.closeCancel('${c.num}')">Назад</button>
+        <button class="primary" onclick="act.doCancel('${c.num}')">Подтвердить отмену</button>
+      </div>
+    </div>` : '';
+  let a = '';
+
+  if (['awaiting_check','needs_replacement','needs_order','needs_transfer',
+       'awaiting_delivery','ready_to_assemble'].includes(stg) || isPostAssembly(c)){
+    a += ui.addForm.has(c.num) ? addFormHTML(c) :
+      `<button class="ghost" onclick="act.openAdd('${c.num}')">+ Добавить позицию</button>`;
+    if (isPostAssembly(c) && !ui.addForm.has(c.num))
+      a += `<div class="hint">Заказ уже собран. Добавленная сейчас позиция будет помечена и заблокирует выдачу, пока не окажется в наличии.</div>`;
+  }
+  if (stg==='awaiting_check' && c.items.length){
+    a += `<button class="primary" onclick="act.confirmAvail('${c.num}')">Подтвердить наличие всех тканей</button>
+          <div class="hint">Все позиции доступны. Подтверждение — ваша личная ответственность: оно попадёт в историю с вашим именем.</div>`;
+  }
+  if (stg==='ready_to_assemble'){
+    const loads = sewingLoad();
+    a += `<div class="sewrow"><span>Швея:</span>
+            <select id="sew-${c.num}"><option value="">Швея не выбрана</option>`
+        + loads.map(l => `<option value="${l.id}">${esc(l.name)} — в пошиве: ${l.act}${l.act ? ' / ' + l.actM + ' м' : ''} · сшито: ${l.done}</option>`).join('')
+        + `<option value="${NO_SEW_ID}">Без пошива — заказ сразу готов к выдаче</option>`
+        + `</select></div>
+          <div class="hint">Список — от наименее загруженной. «В пошиве» — чеки у швеи прямо сейчас; «сшито» — завершённые за всё время.</div>
+          <button class="primary" onclick="act.assemble('${c.num}')">Собрать заказ</button>`;
+  }
+  if (stg==='assembled')      a += `<button class="primary" onclick="act.toSewing('${c.num}')">Передан в пошив</button>`;
+  if (stg==='in_sewing')      a += `<button class="primary" onclick="act.ready('${c.num}')">Заказ готов</button>`;
+  if (stg==='ready_to_issue'){
+    const blockers = issueBlockers(c);
+    if (!blockers.length){
+      a += `<button class="primary" onclick="act.issue('${c.num}')">Выдан клиенту</button>`;
+    } else {
+      // раздел 38.3: показываем, какая именно позиция мешает и что с ней сделать
+      a += `<button class="primary" disabled title="Есть незакрытые позиции">Выдан клиенту</button>
+            <div class="hint">Выдача заблокирована. ${blockers.map(i =>
+              `<b>${esc(i.mark)}</b> — ${i.status===ST.REPL ? 'выполните замену или снимите пометку'
+                                                            : 'переведите в «В наличии» или «Получено»'}`).join('; ')}.</div>`;
+    }
+  }
+
+  if (!isArchived(c)) a += cancelForm || cancelBtn;
+  return a ? `<div class="actions">${a}</div>` : '';
+}
+
+function addFormHTML(c){
+  const others = STORES.filter(s=>s.active && s.id!==c.store);
+  return `<div class="addform">
+    <div class="formtitle">Новая позиция</div>
+    <input id="a-mark-${c.num}" list="markList" placeholder="Маркировка — начните вводить"
+           oninput="act.addFieldsChanged('${c.num}')" autocomplete="off">
+    <div class="stockhint" id="a-hint-${c.num}"></div>
+    <div class="row">
+      <input class="qty" id="a-qty-${c.num}" inputmode="decimal" placeholder="Кол-во">
+      <select class="unit" id="a-unit-${c.num}"><option>м</option><option>шт</option></select>
+      <select id="a-st-${c.num}" onchange="act.addFieldsChanged('${c.num}')">
+        <option>${ST.AVAIL}</option><option>${ST.ORDER}</option><option>${ST.MOVE}</option><option>${ST.ORDERED}</option>
+      </select>
+    </div>
+    <div id="a-srcwrap-${c.num}" style="display:none">
+      <select id="a-src-${c.num}">
+        <option value="">Откуда (магазин-источник)</option>
+        ${others.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="row" style="display:flex;gap:8px">
+      <button class="ghost" onclick="act.closeAdd('${c.num}')">Отмена</button>
+      <button class="primary" onclick="act.addItem('${c.num}')">Добавить</button>
+    </div>
+  </div>`;
+}
+
+/* ── лента комментариев (раздел 36) ──
+   Записи неизменяемы: ни правки, ни удаления, как и в истории операций. */
+const cmtsOf     = (c, itemId) => (c.comments||[]).filter(k => (k.itemId||null) === (itemId||null));
+const cmtTotal   = c => (c.comments||[]).length;
+const canComment = c => !isArchived(c);          // в архиве только чтение (решение Р14)
+
+function cmtEntryHTML(k){
+  return `<div class="cmt">
+    <div class="meta"><b>${esc(k.user)}</b> · ${fmtD(k.d)}${k.ts && k.ts!=='—' ? ' · '+esc(k.ts) : ''}</div>
+    <div class="body">${esc(k.text)}</div>
+  </div>`;
+}
+/* лента чека — в развёрнутой карточке */
+function cmtBlockHTML(c){
+  const list = cmtsOf(c, null);
+  const add = canComment(c) ? `
+    <div class="cmtadd">
+      <input id="cm-${c.num}" placeholder="Комментарий к заказу" maxlength="500"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();act.addComment('${c.num}')}">
+      <button class="linkbtn" onclick="act.addComment('${c.num}')">Добавить</button>
+    </div>` : `<div class="hint">Чек в архиве — новые комментарии не добавляются.</div>`;
+  return `<div class="cmts">
+    <div class="formtitle">Комментарии${list.length ? ' · ' + list.length : ''}</div>
+    ${list.length ? list.map(cmtEntryHTML).join('') : '<div class="hint">Пока пусто.</div>'}
+    ${add}
+  </div>`;
+}
+/* лента позиции — внутри строки позиции */
+function itemCmtHTML(c, it){
+  const list = cmtsOf(c, it.id);
+  const open = ui.cmtFor.has(it.id);
+  if (!list.length && !open)
+    return canComment(c)
+      ? `<div class="icmt"><button class="linkbtn" onclick="act.cmtToggle('${it.id}')">\uD83D\uDCAC Комментарий</button></div>`
+      : '';
+  return `<div class="icmt">
+    ${list.map(cmtEntryHTML).join('')}
+    ${canComment(c) ? (open ? `
+      <div class="cmtadd">
+        <input id="cmi-${it.id}" placeholder="Комментарий к «${esc(it.mark)}»" maxlength="500"
+               onkeydown="if(event.key==='Enter'){event.preventDefault();act.addComment('${c.num}','${it.id}')}">
+        <button class="linkbtn" onclick="act.addComment('${c.num}','${it.id}')">Добавить</button>
+        <button class="linkbtn" onclick="act.cmtToggle('${it.id}')">Скрыть</button>
+      </div>`
+      : `<button class="linkbtn" onclick="act.cmtToggle('${it.id}')">\uD83D\uDCAC Добавить</button>`) : ''}
+  </div>`;
+}
+
+/* маркеры проблем на свёрнутой карточке.
+   Бордовый — есть замена; оранжевый — незакрытая позиция, добавленная после сборки.
+   До сборки замена показана самим этапом чека, маркер там не нужен (раздел 9.2). */
+function blockMarksHTML(c){
+  if (!isPostAssembly(c)) return '';
+  let h = '';
+  const r = replItems(c).length, l = openLateItems(c).length;
+  if (r) h += `<span class="wmark" title="Позиций к замене: ${r}">\u26A0\uFE0F замена</span>`;
+  if (l) h += `<span class="wmark late" title="Незакрытых позиций: ${l}">\u26A0\uFE0F позиция</span>`;
+  return h;
+}
+
+/* строка со швеёй на свёрнутой карточке (раздел 34.4).
+   Возвращает разметку и цвет правой кромки: цвет есть только у настоящей швеи. */
+function sewLineHTML(c, stg){
+  const early = ['awaiting_check','needs_replacement','needs_order','needs_transfer','awaiting_delivery'];
+  if (early.includes(stg)) return {html:'', color:null};   // назначать швею ещё рано
+  if (isArchived(c) && !c.seamstressId) return {html:'', color:null};
+
+  if (c.seamstressId){
+    if (isNoSew(c.seamstressId))                            // «Без пошива» — серым курсивом, без кромки
+      return {html:`<span class="csew nosew">без пошива</span>`, color:null};
+    const s = seamById(c.seamstressId);
+    const nm = s ? s.name : '';
+    const col = s ? s.color : null;
+    return {html:`<span class="csew" style="color:${col||'inherit'}">${esc(nm)}</span>`, color:col};
+  }
+  if (stg === 'ready_to_assemble')                          // пора выбрать — бледное напоминание
+    return {html:`<span class="csew none">швея не назначена</span>`, color:null};
+  // собран, в пошиве, готов к выдаче — швеи нет: предупреждающий маркер без текста (решение Р8)
+  return {html:`<span class="csew"><span class="warn" title="Швея не назначена">\u26A0\uFE0F</span></span>`, color:null};
+}
+
+function checkHTML(c){
+  const stg = stageOf(c), S = STAGES[stg];
+  const open = ui.expanded.has(c.num);
+  // до сборки — полная правка; после сборки — та же правка, но без разделения (раздел 38.1)
+  const editable = ['awaiting_check','needs_replacement','needs_order','needs_transfer',
+                    'awaiting_delivery','ready_to_assemble'].includes(stg) || isPostAssembly(c);
+  const meta = [];
+  if (c.archivedAt) meta.push((stg==='cancelled'?'Отменён ':'Выдан ')+fmtD(c.archivedAt));
+  if (c.cancelReason) meta.push('Причина: '+esc(c.cancelReason));
+  const sew = sewLineHTML(c, stg);
+  return `<article class="check ${stg==='issued'?'stage-issued':''}${sew.color?' hassew':''}"
+                   style="--sc:${S.color}; --tc:${S.dark?'#26251F':'#fff'}${sew.color?`; --swc:${sew.color}`:''}">
+    <div class="selvedge" aria-hidden="true"></div>
+    ${sew.color?'<div class="selvedge right" aria-hidden="true"></div>':''}
+    <div class="chead" onclick="act.toggle('${c.num}')" role="button" aria-expanded="${open}" tabindex="0"
+         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();act.toggle('${c.num}')}">
+      <span class="cnum">№ ${c.num}</span>
+      <span class="cstore">· ${esc(storeName(c.store))}</span>
+      ${blockMarksHTML(c)}
+      ${cmtTotal(c) ? `<span class="ccount" title="Комментариев: ${cmtTotal(c)}">\uD83D\uDCAC ${cmtTotal(c)}</span>` : ''}
+      <span class="stagechip ${stg==='issued'?'bordered':''}">${S.label}</span>
+      ${sew.html}
+    </div>
+    ${c.client?`<div class="cclient">Клиент: <b>${esc(c.client)}</b></div>`:''}
+    <div class="cbyline">Создан ${fmtD(c.createdAt)} · ${esc(c.createdBy)}</div>
+    ${open ? `
+      ${meta.length?`<div class="cmeta">${meta.join(' · ')}</div>`:''}
+      <div class="items">${c.items.map(it=>itemRow(c,it,editable)).join('') || '<div class="hint" style="padding:10px 0">Позиции пока не добавлены.</div>'}</div>
+      ${actionsHTML(c)}
+      ${cmtBlockHTML(c)}
+      <div class="actions" style="padding-top:0">
+        <button class="ghost" onclick="act.toggleHistory('${c.num}')">${ui.history.has(c.num)?'Скрыть историю':'История'}</button>
+      </div>
+      ${ui.history.has(c.num)?`<div class="history">${[...c.history].reverse().map(h=>
+        `<div class="hentry"><span class="hts">${h.ts}</span><span class="hwho">${esc(h.user)}</span><span class="htext">${esc(h.text)}</span></div>`).join('')}</div>`:''}
+    ` : ''}
+  </article>`;
+}
+
+/* ── сопоставление через транслитерацию (раздел 20.1) ──
+   Маркировки бывают латиницей («Blackout 501»), а набирают их с русской раскладки.
+   Обе строки приводятся к согласному скелету, где созвучные буквы считаются одной. */
+const TRANSLIT = {
+  'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'j','з':'z','и':'i','й':'i',
+  'к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f',
+  'х':'h','ц':'c','ч':'c','ш':'s','щ':'s','ъ':'','ы':'i','ь':'','э':'e','ю':'u','я':'a'
+};
+function skel(str){
+  let t = String(str).toLowerCase().replace(/[а-яё]/g, ch => TRANSLIT[ch] !== undefined ? TRANSLIT[ch] : ch);
+  t = t.replace(/ck/g,'k').replace(/[cq]/g,'k').replace(/x/g,'ks').replace(/z/g,'s').replace(/w/g,'v');
+  t = t.replace(/[^a-z0-9]/g,'');
+  t = t.replace(/(.)\1+/g,'$1');            // сдвоенные буквы — за одну
+  return t.replace(/[aeiou]/g,'');           // гласные отбрасываем: они и путают
+}
+/* прямое совпадение, а если не вышло — по скелету (запрос от трёх знаков) */
+function softHit(hay, q){
+  const h = String(hay||'').toLowerCase();
+  if (h.includes(q)) return true;
+  if (q.length < 3) return false;
+  const qs = skel(q);
+  return qs.length >= 2 && skel(h).includes(qs);
+}
+/* строка свободного текста: номер, клиент, маркировка — частичное совпадение (раздел 20.1) */
+function matches(c){
+  if (!query) return true;
+  return c.num.includes(query) ||
+    softHit(c.client, query) ||
+    c.items.some(i => softHit(i.mark, query));
+}
+/* сколько чеков покажет текущий набор фильтров — для кнопки «Показать N» */
+function plChecks(n){
+  const a = n % 10, b = n % 100;
+  if (a === 1 && b !== 11) return 'чек';
+  if (a >= 2 && a <= 4 && (b < 10 || b > 20)) return 'чека';
+  return 'чеков';
+}
+function fltResultCount(){
+  const sel = c => matches(c) && passFilters(c);
+  if (listMode === 'seam')
+    return checks.filter(c => POST_ASSEMBLY.includes(stageOf(c)))
+                 .filter(c => !c.skippedSewing).filter(sel).length;
+  const live = checks.filter(c => !isArchived(c)).filter(sel).length;
+  const arch = flt.archive ? checks.filter(isArchived).filter(sel).length : 0;
+  return live + arch;
+}
+/* панель фильтров: разные фильтры складываются по «и» (раздел 20.2) */
+function passFilters(c){
+  if (flt.store !== 'all' && c.store !== flt.store) return false;
+  if (flt.seam !== 'all'){
+    if (flt.seam === 'none'){ if (c.seamstressId) return false; }
+    else if (c.seamstressId !== flt.seam) return false;
+  }
+  if (flt.mgr   !== 'all' && c.createdBy !== flt.mgr) return false;   // создатель чека (решение Р12)
+  if (flt.stage !== 'all' && stageOf(c) !== flt.stage) return false;
+  if (flt.istat !== 'all' && !c.items.some(i => i.status === flt.istat)) return false;
+  return true;
+}
+const fltActive = () =>
+  ['store','seam','mgr','stage','istat'].filter(k => flt[k] !== 'all').length + (flt.archive ? 1 : 0);
+
+/* подписи для чипов активных фильтров */
+function fltLabel(k){
+  if (k === 'store')   return storeName(flt.store);
+  if (k === 'seam')    return flt.seam === 'none' ? 'швея не назначена' : seamName(flt.seam);
+  if (k === 'mgr')     return flt.mgr;
+  if (k === 'stage')   return (STAGES[flt.stage]||{}).label || flt.stage;
+  if (k === 'istat')   return 'позиция: ' + flt.istat;
+  if (k === 'archive') return 'с архивом';
+  return '';
+}
+function fltColor(k){
+  if (k === 'seam' && flt.seam !== 'none') return seamColor(flt.seam);
+  if (k === 'stage'){ const S = STAGES[flt.stage]; return S && !S.dark ? null : null; }
+  return null;
+}
+
+/* режим «По швеям» (раздел 35): экран развозки заказов.
+   Только чеки, физически находящиеся в работе у швей. */
+function seamView(){
+  const sel = c => matches(c) && passFilters(c);
+  const inWork = checks.filter(c => POST_ASSEMBLY.includes(stageOf(c)))
+                       .filter(c => !c.skippedSewing)          // «Без пошива» сюда не попадает
+                       .filter(sel);
+  const groups = new Map();
+  const nobody = [];
+  inWork.forEach(c => {
+    if (!c.seamstressId || isNoSew(c.seamstressId)){ nobody.push(c); return; }
+    if (!groups.has(c.seamstressId)) groups.set(c.seamstressId, []);
+    groups.get(c.seamstressId).push(c);
+  });
+  if (!groups.size && !nobody.length)
+    return `<div class="empty">У швей сейчас ничего нет.${
+      fltActive()||query ? ' Возможно, мешают фильтры.' : ' Заказы появятся здесь после сборки.'}</div>`;
+
+  // блоки по убыванию количества чеков
+  const order = [...groups.entries()].sort((a,b) => b[1].length - a[1].length ||
+                  seamName(a[0]).localeCompare(seamName(b[0]), 'ru'));
+  const word = n => 'чек' + (n===1?'':n<5?'а':'ов');
+  let html = order.map(([sid, list]) => {
+    const col = seamColor(sid) || '#9E9E9E';
+    list.sort((a,b) => a.num.localeCompare(b.num));
+    return `<div class="seamhead" style="--swh:${col}">
+              <span class="nm">${esc(seamName(sid))}</span>
+              <span class="cnt">${list.length} ${word(list.length)}</span>
+            </div>` + list.map(checkHTML).join('');
+  }).join('');
+  if (nobody.length){
+    nobody.sort((a,b) => a.num.localeCompare(b.num));
+    html += `<div class="seamhead nobody" style="--swh:#B26A00">
+               <span class="nm">\u26A0\uFE0F Швея не назначена</span>
+               <span class="cnt">${nobody.length} ${word(nobody.length)}</span>
+             </div>` + nobody.map(checkHTML).join('');
+  }
+  return html;
+}
+
+function checksView(){
+  const sel  = c => matches(c) && passFilters(c);
+  const live = checks.filter(c => !isArchived(c)).filter(sel).sort((a,b)=>a.num.localeCompare(b.num));
+  const arch = flt.archive
+    ? checks.filter(isArchived).filter(sel).sort((a,b)=>(b.archivedAt||'').localeCompare(a.archivedAt||''))
+    : [];
+
+  if (!live.length && !arch.length){
+    return `<div class="empty">Ничего не найдено.${fltActive()||query ? ' Измените запрос или снимите фильтры.' : ''}${
+      !flt.archive && checks.some(isArchived) ? '<br><button class="fclear" onclick="act.fltSet(\'archive\', true)">Поискать в архиве</button>' : ''}</div>`;
+  }
+
+  let html = live.map(checkHTML).join('');
+  if (arch.length){
+    html += `<div class="monthhead">Архив — ${arch.length} чек${arch.length===1?'':arch.length<5?'а':'ов'}</div>`;
+    if (query || fltActive() > 1){
+      html += arch.map(checkHTML).join('');       // при активном поиске папки не мешают
+    } else {
+      const curKey = monthKey(todayISO());
+      const groups = new Map();
+      arch.forEach(c => { const k = monthKey(c.archivedAt||c.createdAt);
+        if (!groups.has(k)) groups.set(k, []); groups.get(k).push(c); });
+      [...groups.keys()].sort((a,b)=>b.localeCompare(a)).forEach(k => {
+        const list = groups.get(k);
+        if (k === curKey){
+          html += `<div class="monthhead">${monthLabel(k)}</div>` + list.map(checkHTML).join('');
+        } else {
+          const openM = ui.openMonths.has(k);
+          html += `<button class="folder" aria-expanded="${openM}" onclick="act.toggleMonth('${k}')">
+                     <span>${openM?'▾':'▸'} ${monthLabel(k)}</span>
+                     <span class="cnt">${list.length} чек${list.length===1?'':list.length<5?'а':'ов'}</span>
+                   </button>`;
+          if (openM) html += list.map(checkHTML).join('');
+        }
+      });
+    }
+  }
+  return html;
+}
+
+/* ────────────────── отрисовка: товары ────────────────── */
+function stockCell(p, s){
+  const off = s.active ? '' : ' off';
+  const label = `<span class="sname${off}">${esc(s.name)}${s.active?'':' (приостановлен)'}</span>`;
+  if (!hasStock(p, s.id)) return `<div class="pline">${label}<span class="sval none">—</span></div>`;
+  const t = stockTotal(p, s.id);
+  return `<div class="pline">${label}<span class="sval${t<0?' neg':''}">${t} ${p.unit}<span class="pieces">${piecesStr(p.stocks[s.id])}</span></span></div>`;
+}
+function productsView(){
+  let list = [...products].sort((a,b)=>a.name.localeCompare(b.name,'ru'));
+  if (query) list = list.filter(p=>p.name.toLowerCase().includes(query));
+  const activeStores = STORES.filter(s=>s.active);
+  const addBlock = ui.prodAdd ? `
+    <div class="prod"><div class="formtitle" style="margin-bottom:8px">Новый товар — оприходование</div>
+      <div class="pedit">
+        <input id="np-name" placeholder="Наименование, напр. BL-501" style="flex:1;min-width:150px">
+        <select id="np-unit"><option>м</option><option>шт</option></select>
+      </div>
+      <div class="pedit">
+        <select id="np-store" style="flex:1">${activeStores.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>
+        <input id="np-stock" class="stockin" inputmode="text" placeholder="Кол-во или куски: 5+7+25">
+      </div>
+      <div class="pedit">
+        <button class="ghost" style="flex:1" onclick="act.prodAddToggle()">Отмена</button>
+        <button class="primary" style="flex:1" onclick="act.prodAddDo()">Добавить</button>
+      </div>
+    </div>`
+    : `<div class="bkbtns" style="margin-bottom:12px">
+        <button class="ghost" onclick="act.prodAddToggle()">+ Добавить товар</button>
+        <button class="ghost" onclick="act.excelPick()">Загрузить из Excel</button>
+      </div>`;
+  const rows = list.map(p=>{
+    const edit = ui.prodEdit.has(p.id);
+    const recv = ui.prodRecv.has(p.id);
+    const tracked = Object.keys(p.stocks).length>0;
+    const total = STORES.reduce((t,s)=>hasStock(p,s.id)?round2(t+stockTotal(p,s.id)):t, 0);
+    return `<div class="prod">
+      <div class="prow">
+        <span class="pname">${esc(p.name)}</span>
+        <span class="punit">${p.unit}</span>
+        <span class="ptotal">${tracked?('всего: '+round2(total)+' '+p.unit):'остатки не отслеживаются'}</span>
+      </div>
+      <div class="pstocks">${STORES.map(s=>stockCell(p,s)).join('')}</div>
+      ${recv ? `
+        <div class="pedit">
+          <select id="pr-store-${p.id}" style="flex:1">${activeStores.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>
+          <input id="pr-qty-${p.id}" class="stockin" inputmode="text" placeholder="+ кол-во или 12+8">
+          <button class="linkbtn" onclick="act.prodRecvDo('${p.id}')">Оприходовать</button>
+          <button class="linkbtn" onclick="act.prodRecvToggle('${p.id}')">Отмена</button>
+        </div>` : ''}
+      ${edit ? `
+        <div class="pedit"><span class="slabel">Единица:</span>
+          <select id="pe-unit-${p.id}"><option ${p.unit==='м'?'selected':''}>м</option><option ${p.unit==='шт'?'selected':''}>шт</option></select>
+        </div>
+        ${STORES.map(s=>`<div class="pedit"><span class="slabel">${esc(s.name)}:</span>
+          <input id="pe-stock-${p.id}-${s.id}" class="stockin" inputmode="text"
+                 value="${hasStock(p,s.id)?[...p.stocks[s.id]].sort((a,b)=>a-b).join('+'):''}" placeholder="пусто = нет · 5+7+25"></div>`).join('')}
+        <div class="pedit">
+          <button class="linkbtn" onclick="act.prodSave('${p.id}')">Сохранить</button>
+          <button class="linkbtn" onclick="act.prodEditToggle('${p.id}')">Отмена</button>
+        </div>` : ''}
+      ${(!edit && !recv) ? `
+        <div class="ptools">
+          <button class="linkbtn" onclick="act.prodRecvToggle('${p.id}')">Оприходовать (приход)</button>
+          <button class="linkbtn" onclick="act.prodEditToggle('${p.id}')">Корректировать остатки</button>
+          <button class="linkbtn" onclick="act.prodDel('${p.id}')">Удалить</button>
+        </div>` : ''}
+    </div>`;
+  }).join('') || `<div class="empty">Товары не найдены.</div>`;
+  const note = `<div class="note">Номенклатура общая, остатки — по магазинам, кусками: «37 м (5+7+25)». Отрез при продаже берётся из наименьшего достаточного куска (крупные рулоны сохраняются цельными); возврат кладёт отрез обратно отдельным куском. Списание: «В наличии» — с магазина чека; «Получено» после перемещения — с магазина-источника; поставка поставщика под заказ остатки не меняет. Импорт из Excel: обязательна колонка «Наименование»; по желанию — «Ед.» (м/шт) и колонки с названиями магазинов, в них остатки числом или кусками «5+7+25». Новые товары добавляются; для уже существующих приложение предложит обновить остатки из файла (перезаписываются только заполненные ячейки, пустая ячейка ничего не стирает).</div>`;
+  return note + addBlock + rows;
+}
+
+/* ────────────────── отрисовка: статистика ────────────────── */
+function allActions(){
+  const out = [];
+  checks.forEach(c => c.history.forEach(h => out.push({...h, store:c.store})));
+  return out;
+}
+function statMonths(){
+  const s = new Set();
+  allActions().forEach(a => { if(a.d) s.add(monthKey(a.d)); });
+  return [...s].sort((a,b)=>b.localeCompare(a));
+}
+function statSentence(){
+  const opTxt  = ui.stKind==='all'   ? 'все операции' : 'только «'+KIND_LABELS[ui.stKind]+'»';
+  const perTxt = periodLabel();
+  const stTxt  = ui.stStore==='all'  ? 'все магазины' : 'только магазин «'+storeName(ui.stStore)+'»';
+  const usTxt  = ui.stUser==='all'   ? 'все менеджеры' : 'только менеджер '+ui.stUser;
+  const cmp = ui.stGroup==='store' ? 'магазины (каждая полоса — магазин)'
+            : ui.stGroup==='user'  ? 'менеджеров (каждая полоса — менеджер)'
+            : 'виды операций (каждая полоса — вид операции)';
+  return `Считаем: ${opTxt} · ${perTxt} · ${stTxt} · ${usTxt}. Сравниваем ${cmp}.`;
+}
+/* общая панель выбора периода (раздел 22) */
+function periodBarHTML(){
+  const btns = PERIODS.map(p =>
+    `<button class="pbtn" aria-pressed="${ui.per.kind===p.k}" onclick="act.perSet('${p.k}')">${p.label}</button>`).join('');
+  const range = ui.per.kind === 'range' ? `
+    <div class="prange">
+      <label>с <input type="date" id="per-from" value="${ui.per.from||''}" onchange="act.perRange()"></label>
+      <label>по <input type="date" id="per-to" value="${ui.per.to||''}" onchange="act.perRange()"></label>
+    </div>` : '';
+  return `<div class="statcard">
+    <h3>Период</h3>
+    <div class="pbtns">${btns}</div>
+    ${range}
+    <div class="totline">Показано ${periodLabel()}. Заказы считаются по дате создания чека, операции сотрудников — по дате самого действия, швеи — по дате отметки готовности. Остатки в магазине от периода не зависят.</div>
+  </div>`;
+}
+
+/* заказы за период — по дате создания чека (решение Р15) */
+function ordersCardHTML(){
+  const list = checks.filter(c => ui.per.kind==='all' || inPeriod(c.createdAt))
+                     .filter(c => ui.stStore==='all' || c.store===ui.stStore);
+  const metres = round2(list.reduce((a,c) =>
+    a + c.items.filter(i => i.unit==='м').reduce((x,i) => x + i.qty, 0), 0));
+  const pieces = round2(list.reduce((a,c) =>
+    a + c.items.filter(i => i.unit==='шт').reduce((x,i) => x + i.qty, 0), 0));
+  const cancelled = list.filter(c => stageOf(c)==='cancelled').length;
+  const groups = new Map();
+  list.forEach(c => {
+    const key = ui.stGroup==='user' ? c.createdBy : storeName(c.store);
+    groups.set(key, (groups.get(key)||0) + 1);
+  });
+  const rows = [...groups.entries()].sort((a,b) => b[1]-a[1]);
+  const max = rows.length ? rows[0][1] : 1;
+  const bars = rows.map(([k,v],i) => `
+    <div class="brow"><span>${i===0?'<b>':''}${esc(k)}${i===0?'</b>':''}</span><span class="bcount">${v}</span></div>
+    <div class="btrack"><div class="bfill" style="width:${Math.max(6, Math.round(v/max*100))}%"></div></div>`).join('')
+    || '<div class="hint">За выбранный период заказов нет.</div>';
+  return `<div class="statcard">
+    <h3>Заказы за период</h3>
+    <div class="filters">
+      <select onchange="act.stSet('stGroup', this.value)">
+        <option value="store" ${ui.stGroup==='store'?'selected':''}>Сравнить: магазины</option>
+        <option value="user" ${ui.stGroup==='user'?'selected':''}>Сравнить: менеджеров</option>
+      </select>
+    </div>
+    ${bars}
+    <div class="totline">Принято заказов: ${list.length}${cancelled?` (из них отменено: ${cancelled})`:''} · ${metres} м тканей${pieces?` и ${pieces} шт фурнитуры`:''}. Считается по дате создания чека, ${periodLabel()}.</div>
+  </div>`;
+}
+
+function statsView(){
+  const acts = allActions().filter(a =>
+    (ui.per.kind==='all' || inPeriod(a.d)) &&
+    (ui.stStore==='all'  || a.store===ui.stStore) &&
+    (ui.stUser==='all'   || a.user===ui.stUser) &&
+    (ui.stKind==='all'   || a.kind===ui.stKind));
+  const groups = new Map();
+  acts.forEach(a=>{
+    const key = ui.stGroup==='store' ? storeName(a.store)
+              : ui.stGroup==='user'  ? a.user
+              : (KIND_LABELS[a.kind]||'Прочее');
+    groups.set(key, (groups.get(key)||0)+1);
+  });
+  const rows = [...groups.entries()].sort((a,b)=>b[1]-a[1]);
+  const max = rows.length ? rows[0][1] : 1;
+  const bars = rows.map(([k,v],i)=>`
+    <div class="brow"><span>${i===0?'<b>':''}${esc(k)}${i===0?'</b>':''}</span><span class="bcount">${v}</span></div>
+    <div class="btrack"><div class="bfill" style="width:${Math.max(6, Math.round(v/max*100))}%"></div></div>`).join('')
+    || '<div class="hint">Нет операций по выбранным фильтрам.</div>';
+
+  const perDesc = periodLabel();
+  const opsCard = `<div class="statcard">
+    <h3>Операции — кто и где</h3>
+    <div class="filters">
+      <select onchange="act.stSet('stStore', this.value)">
+        <option value="all" ${ui.stStore==='all'?'selected':''}>Все магазины</option>
+        ${STORES.map(s=>`<option value="${s.id}" ${ui.stStore===s.id?'selected':''}>${esc(s.name)}</option>`).join('')}
+      </select>
+      <select onchange="act.stSet('stUser', this.value)">
+        <option value="all" ${ui.stUser==='all'?'selected':''}>Все менеджеры</option>
+        ${USERS.map(u=>`<option value="${esc(u.name)}" ${ui.stUser===u.name?'selected':''}>${esc(u.name)}</option>`).join('')}
+      </select>
+      <select onchange="act.stSet('stKind', this.value)">
+        <option value="all" ${ui.stKind==='all'?'selected':''}>Все операции</option>
+        ${Object.entries(KIND_LABELS).map(([k,l])=>`<option value="${k}" ${ui.stKind===k?'selected':''}>${l}</option>`).join('')}
+      </select>
+      <select onchange="act.stSet('stGroup', this.value)">
+        <option value="store" ${ui.stGroup==='store'?'selected':''}>Сравнить: магазины</option>
+        <option value="user" ${ui.stGroup==='user'?'selected':''}>Сравнить: менеджеров</option>
+        <option value="kind" ${ui.stGroup==='kind'?'selected':''}>Сравнить: виды операций</option>
+      </select>
+    </div>
+    <div class="hint" style="margin-bottom:10px">${statSentence()}</div>
+    ${bars}
+    <div class="totline">Всего операций ${perDesc}: ${acts.length}. Лидер выделен жирным.</div>
+  </div>`;
+
+  /* швеи: сшито за период + текущее «в работе» */
+  const swLoadNow = new Map(sewingLoad().map(l => [l.id, l.act]));
+  const swMap = new Map(realSeams().map(s => [s.id, {n:0, m:0}]));
+  let swTotal = 0, swTotalM = 0;
+  checks.forEach(c => {
+    if (!c.seamstressId || isNoSew(c.seamstressId)) return;
+    if (!['ready_to_issue','issued'].includes(stageOf(c))) return;
+    let d = null;
+    for (let i = c.history.length - 1; i >= 0; i--){
+      if (c.history[i].kind === 'ready'){ d = c.history[i].d; break; } }
+    if (!d){ const h = c.history.find(x => x.kind === 'issue'); d = h ? h.d : (c.archivedAt || c.createdAt); }
+    if (ui.per.kind !== 'all' && !inPeriod(d)) return;
+    const m = c.items.filter(i => i.unit === 'м').reduce((a, i) => a + i.qty, 0);
+    const e = swMap.get(c.seamstressId) || {n:0, m:0};
+    e.n++; e.m = round2(e.m + m); swMap.set(c.seamstressId, e);
+    swTotal++; swTotalM = round2(swTotalM + m);
+  });
+  const swRows = [...swMap.entries()].sort((a,b) => b[1].n - a[1].n || b[1].m - a[1].m);
+  const swMax = swRows.length && swRows[0][1].n ? swRows[0][1].n : 1;
+  const swBars = swRows.map(([sid, e], i) => {
+    const act = swLoadNow.get(sid) || 0;
+    const name = seamName(sid);
+    return `
+    <div class="brow"><span>${i===0 && e.n ? '<b>' : ''}${esc(name)}${i===0 && e.n ? '</b>' : ''}
+        <span class="hint">· в работе: ${act}</span></span>
+      <span class="bcount">${e.n} · ${e.m} м</span></div>
+    <div class="btrack"><div class="bfill" style="width:${e.n ? Math.max(6, Math.round(e.n/swMax*100)) : 0}%"></div></div>`;
+  }).join('') || '<div class="hint">Пока нет завершённых пошивов.</div>';
+  const sewingCard = `<div class="statcard">
+    <h3>Швеи — кто сколько сшил</h3>
+    ${swBars}
+    <div class="totline">Полосы и числа «N · M м» — сшитое за выбранный период: чеки со швеёй, дошедшие до «Готов к выдаче» или «Выдан», по дате готовности. «В работе» — сколько чеков у швеи в пошиве прямо сейчас; от периода не зависит. Итого ${periodLabel()}: ${swTotal} чек(ов) · ${swTotalM} м.</div>
+  </div>`;
+
+  const sid = ui.stShopStore;
+  const inStore = products.filter(p=>hasStock(p,sid))
+    .map(p=>({p, t:stockTotal(p,sid)}))
+    .sort((a,b)=>b.t-a.t);
+  const sumM = round2(inStore.filter(x=>x.p.unit==='м').reduce((a,x)=>a+x.t,0));
+  const sumPc = round2(inStore.filter(x=>x.p.unit==='шт').reduce((a,x)=>a+x.t,0));
+  const shopRows = inStore.map(x=>`
+    <div class="srow"><span>${esc(x.p.name)}</span>
+      <span class="sq${x.t<0?' neg':''}">${x.t} ${x.p.unit}<span class="pieces">${piecesStr(x.p.stocks[sid])}</span></span></div>`).join('')
+    || '<div class="hint">В этом магазине отслеживаемых остатков нет.</div>';
+  const shopCard = `<div class="statcard">
+    <h3>Что лежит в магазине</h3>
+    <div class="filters">
+      <select onchange="act.stSet('stShopStore', this.value)">
+        ${STORES.map(s=>`<option value="${s.id}" ${sid===s.id?'selected':''}>${esc(s.name)}${s.active?'':' (приостановлен)'}</option>`).join('')}
+      </select>
+    </div>
+    ${shopRows}
+    <div class="totline">Итого: ${sumM} м тканей${sumPc?(' и '+sumPc+' шт фурнитуры'):''} · позиций: ${inStore.length}</div>
+  </div>`;
+
+  const backupCard = `<div class="statcard">
+    <h3>Резервная копия</h3>
+    <div class="hint" style="margin-bottom:10px">Скачивается один файл со всем содержимым: магазины, менеджеры, швеи, товары с остатками, чеки, позиции и полные истории операций. Загрузка копии полностью заменяет текущие данные (отменяется кнопкой ↶).</div>
+    <div class="bkbtns">
+      <button class="ghost" onclick="act.backupExport()">Скачать копию</button>
+      <button class="ghost" onclick="act.backupImportPick()">Загрузить копию</button>
+    </div>
+  </div>`;
+
+  return periodBarHTML() + ordersCardHTML() + opsCard + sewingCard + shopCard + backupCard;
+}
+
+/* ────────────────── общий рендер ────────────────── */
+function render(){
+  const admin = isAdminNow();
+  if (!admin && (tab === 'stats' || tab === 'admin')) tab = 'checks';
+  document.getElementById('tabChecks').setAttribute('aria-selected', tab==='checks');
+  document.getElementById('tabProds').setAttribute('aria-selected', tab==='products');
+  document.getElementById('tabStats').setAttribute('aria-selected', tab==='stats');
+  document.getElementById('tabAdmin').setAttribute('aria-selected', tab==='admin');
+  document.getElementById('tabStats').style.display = admin ? 'block' : 'none';
+  document.getElementById('tabAdmin').style.display = admin ? 'block' : 'none';
+  orderUsers();
+  document.getElementById('whoBox').innerHTML = authed
+    ? 'Вы: <b>' + esc(currentUser) + '</b>' + (admin ? ' · админ' : '')
+      + ' <button class="linkbtn" onclick="act.logout()">Выйти</button>'
+    : '';
+  const chipsEl = document.getElementById('chips');
+  const panel = document.getElementById('fpanel'), fbtn = document.getElementById('fltBtn');
+  const showFlt = tab === 'checks';
+  fbtn.style.display = showFlt ? 'flex' : 'none';
+  panel.classList.toggle('open', showFlt && ui.fltOpen);
+  fbtn.setAttribute('aria-expanded', showFlt && ui.fltOpen);
+  if (showFlt) panel.innerHTML = fpanelHTML(); else panel.innerHTML = '';
+  const mrow = document.getElementById('moderow');
+  mrow.classList.toggle('on', showFlt);
+  document.getElementById('mList').setAttribute('aria-pressed', listMode==='list');
+  document.getElementById('mSeam').setAttribute('aria-pressed', listMode==='seam');
+  const n = fltActive();
+  const cnt = document.getElementById('fltCount');
+  cnt.textContent = n || ''; cnt.classList.toggle('on', n > 0);
+  chipsEl.style.display = (showFlt && chipsHTML()) ? 'flex' : 'none';
+  document.getElementById('bottombar').style.display = tab==='checks' ? 'block' : 'none';
+  document.getElementById('searchrow').style.display = (tab==='stats'||tab==='admin') ? 'none' : 'flex';
+  document.getElementById('search').placeholder = tab==='checks' ? 'Поиск: номер, маркировка, клиент' : 'Поиск товара';
+  document.getElementById('chips').innerHTML = chipsHTML();
+  document.getElementById('markList').innerHTML =
+    [...new Set([ ...products.map(p=>p.name), ...checks.flatMap(c=>c.items.map(i=>i.mark)) ])]
+      .sort((a,b)=>a.localeCompare(b,'ru')).map(n=>`<option value="${esc(n)}">`).join('');
+  document.getElementById('list').innerHTML =
+    tab==='checks' ? (listMode==='seam' ? seamView() : checksView()) : tab==='products' ? productsView() :
+    tab==='stats' ? statsView() : adminView();
+  updateUndoBtn();
+}
+
+/* ── новый чек ── */
+const sheet = document.getElementById('sheet'), back = document.getElementById('sheetback');
+function openSheet(){
+  document.getElementById('fStore').innerHTML =
+    STORES.filter(s=>s.active).map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');
+  document.getElementById('fErr').style.display='none';
+  ['fNum','fClient','fComment'].forEach(id=>document.getElementById(id).value='');
+  sheet.classList.add('open'); back.classList.add('open');
+  document.getElementById('fNum').focus();
+}
+function closeSheet(){ sheet.classList.remove('open'); back.classList.remove('open'); }
+document.getElementById('newBtn').onclick = openSheet;
+document.getElementById('fCancel').onclick = closeSheet;
+back.onclick = closeSheet;
+document.getElementById('fSave').onclick = () => {
+  const numv = document.getElementById('fNum').value.trim();
+  const err = document.getElementById('fErr');
+  if (!numv){ err.textContent='Введите номер чека.'; err.style.display='block'; return; }
+  if (checks.some(c=>c.num===numv)){ err.textContent='Чек с таким номером уже существует.'; err.style.display='block'; return; }
+  pushUndo(`создание чека №${numv}`, null);
+  const firstComment = document.getElementById('fComment').value.trim();
+  const c = {
+    id:TM_DB.dbNewId(),
+    num:numv, store:document.getElementById('fStore').value,
+    client:document.getElementById('fClient').value.trim(),
+    createdBy:currentUser, createdAt:todayISO(), archivedAt:null,
+    confirmed:false, seamstressId:null, skippedSewing:false,
+    manual:null, cancelReason:null,
+    items:[], history:[], comments:[]
+  };
+  // комментарий из формы становится первой записью ленты (раздел 36.1)
+  if (firstComment)
+    c.comments.push({id:ncmid(), itemId:null, text:firstComment,
+                     user:currentUser, ts:now(), d:todayISO()});
+  log(c, `${verb('Создал','Создала')} чек.`,'create');
+  checks.push(c); ui.expanded.add(numv); tab='checks'; act.fltReset(); query=''; document.getElementById('search').value='';
+  closeSheet(); render();
+  const el=[...document.querySelectorAll('.cnum')].find(e=>e.textContent.includes(numv));
+  if (el) el.scrollIntoView({behavior:'smooth', block:'center'});
+};
+
+/* ── инициализация ── */
+document.getElementById('search').oninput = e => act.search(e.target.value);
+document.getElementById('undoBtn').onclick = () => act.undo();
+document.getElementById('importFile').onchange = e => {
+  if (e.target.files && e.target.files[0]) act.backupImport(e.target.files[0]);
+  e.target.value = '';
+};
+document.getElementById('excelFile').onchange = e => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  if (typeof XLSX === 'undefined'){
+    alert('Модуль чтения Excel не загрузился. Проверьте подключение к интернету и обновите страницу.');
+    return;
+  }
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const wb = XLSX.read(r.result, {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''});
+      importProductRows(rows);
+    } catch(err){ alert('Не удалось прочитать файл: ' + err.message); }
+  };
+  r.readAsArrayBuffer(f);
+};
+function showLogin(){
+  let saved = null;
+  try { saved = remStore.get(); } catch(e){}
+  const fld = document.getElementById('loginUser');
+  if (saved){ fld.value = saved;
+    document.getElementById('userHints').innerHTML = `<option value="${esc(saved)}">`; }
+  const le = document.getElementById('loginErr');
+  if (remStore.takeIdle()){
+    le.textContent = 'Вы вышли автоматически: час без действий. Введите PIN, чтобы продолжить.';
+    le.style.display = 'block';
+  } else le.style.display = 'none';
+  document.getElementById('rememberRow').style.display = canRemember ? 'flex' : 'none';
+  document.getElementById('rememberNote').style.display = canRemember ? 'none' : 'block';
+  document.getElementById('loginRemember').checked = canRemember && !!remStore.get();
+  document.getElementById('loginback').classList.remove('hidden');
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Связь с базой: загрузка при входе и сохранение после действий.
+   ────────────────────────────────────────────────────────────── */
+const liveState = () => JSON.parse(JSON.stringify(
+  {stores:STORES, users:USERS, seamstresses:SEAMSTRESSES, products, checks}));
+
+let lastSaved = null, syncTimer = null, syncing = false, syncAgain = false;
+const syncPending = () => syncing || syncAgain || syncTimer !== null;
+
+function syncBadge(state, detail){
+  const el = document.getElementById('syncBadge');
+  if (!el) return;
+  el.classList.toggle('err', state === 'err');
+  el.textContent = state === 'saving' ? 'сохраняю…'
+                 : state === 'ok'     ? 'сохранено'
+                 : state === 'err'    ? 'не сохранено' : '';
+  el.title = detail || '';
+}
+
+function scheduleSync(){
+  if (!authed || !lastSaved) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => { syncTimer = null; runSync(); }, 400);
+}
+
+async function runSync(){
+  if (syncing){ syncAgain = true; return; }
+  syncing = true; syncBadge('saving');
+  const before = lastSaved, after = liveState();
+  let r;
+  try { r = await TM_DB.dbSyncDiff(before, after, stageOf); }
+  catch(e){ r = {ok:false, where:e.message}; }
+  if (r && r.ok){ lastSaved = after; syncBadge('ok'); }
+  else {
+    syncBadge('err', r && r.where);
+    toast('Не удалось сохранить' + (r && r.where ? ' (' + r.where + ')' : '') +
+          '. Проверьте связь и обновите страницу.');
+  }
+  syncing = false;
+  if (syncAgain){ syncAgain = false; scheduleSync(); }
+}
+
+/* каждое действие приложения заканчивается render() — это единственная
+   точка, через которую проходят все изменения, поэтому сохранение
+   подвешено именно к ней */
+const renderCore = render;
+render = function(){ renderCore.apply(this, arguments); scheduleSync(); };
+
+async function afterLogin(){
+  const box = document.getElementById('loginErr');
+  try {
+    const st = await TM_DB.dbLoadAll();
+    STORES = st.stores; USERS = st.users; SEAMSTRESSES = st.seamstresses;
+    products = st.products; checks = st.checks;
+  } catch(e){
+    box.textContent = 'Не удалось загрузить данные: ' + e.message;
+    box.style.display = 'block';
+    await TM_DB.dbSignOut();
+    return;
+  }
+  migrateSeamstresses(SEAMSTRESSES);
+  migrateAll();
+  const me = USERS.find(u => u.id === TM_DB.myId());
+  if (!me){
+    box.textContent = 'Учётная запись не связана с сотрудником. Обратитесь к владельцу сети.';
+    box.style.display = 'block';
+    await TM_DB.dbSignOut();
+    return;
+  }
+  currentUser = me.name;
+  authed = true;
+  lastSaved = liveState();
+  if (!isAdminNow() && (tab === 'stats' || tab === 'admin')) tab = 'checks';
+  document.getElementById('loginback').classList.add('hidden');
+  document.getElementById('topnote').style.display = 'none';
+  render();
+  syncBadge('');
+  idleReset();
+}
+
+/* ── автовыход по бездействию ──
+   Час без единого касания — выход. За минуту показывается полоса
+   с кнопкой «Я здесь». Значения переопределяются для проверки. */
+const IDLE_MS = window.TM_IDLE_MS || 60 * 60 * 1000;
+const WARN_MS = window.TM_WARN_MS || 60 * 1000;
+let idleTimer = null, warnTimer = null;
+
+function idleClear(){
+  clearTimeout(idleTimer); clearTimeout(warnTimer);
+  idleTimer = warnTimer = null;
+  const bar = document.getElementById('idleBar');
+  if (bar) bar.classList.remove('on');
+}
+function idleReset(){
+  idleClear();
+  if (!authed) return;
+  warnTimer = setTimeout(() => {
+    document.getElementById('idleBar').classList.add('on');
+  }, Math.max(0, IDLE_MS - WARN_MS));
+  idleTimer = setTimeout(idleLogout, IDLE_MS);
+}
+async function idleLogout(){
+  idleClear();
+  authed = false;
+  if (syncTimer){ clearTimeout(syncTimer); syncTimer = null; }
+  if (syncPending()){ try { await runSync(); } catch(e){} }
+  remStore.setIdle();
+  await TM_DB.dbSignOut();
+  location.reload();
+}
+['pointerdown','keydown','touchstart','wheel'].forEach(ev =>
+  document.addEventListener(ev, idleReset, {passive:true, capture:true}));
+
+function fatal(msg){
+  const box = document.getElementById('loginErr');
+  box.textContent = msg; box.style.display = 'block';
+  document.getElementById('loginBtn').disabled = true;
+}
+
+(async function boot(){
+  showLogin();
+  const init = TM_DB.dbInit();
+  if (!init.ok){ fatal(init.error); return; }
+  let sess = null;
+  try { sess = await TM_DB.dbSession(); } catch(e){}
+  if (sess) await afterLogin();
+})();
+
+/* предупредить, если человек закрывает вкладку с несохранёнными правками */
+window.addEventListener('beforeunload', e => {
+  if (authed && syncPending()){ e.preventDefault(); e.returnValue = ''; }
+});
+</script>
+</body>
+</html>
