@@ -572,6 +572,7 @@ const KIND_LABELS = {
   mark_replace:'Пометки к замене', unmark_replace:'Снятие пометок замены', replace:'Замены позиций',
   add_item_late:'Добавление позиций после сборки', edit_item:'Изменение позиций',
   edit_item_late:'Изменение позиций после сборки', del_item_late:'Удаление позиций после сборки',
+  assign_seam:'Назначение швеи после сборки',
 };
 
 /* ────────────────── товары: остатки — куски по магазинам ──────────────────
@@ -1193,20 +1194,57 @@ const act = {
     pushUndo(`подтверждение наличия по чеку №${num}`, num);
     c.confirmed = true; log(c, `${verb('Подтвердил','Подтвердила')} наличие всех тканей.`,'confirm'); render();
   },
+  /* выбор в списке швей включает кнопку «Собрать заказ» (без перерисовки, чтобы выбор не сбросился) */
+  sewPick(num){
+    const sel = document.getElementById('sew-'+num);
+    const btn = document.getElementById('asm-'+num);
+    const hint = document.getElementById('asm-hint-'+num);
+    const ok = !!(sel && sel.value);
+    if (btn) btn.disabled = !ok;
+    if (hint) hint.style.display = ok ? 'none' : 'block';
+  },
   assemble(num){
     const c = byNum(num);
     const sel = document.getElementById('sew-'+num);
-    const sid = sel.value || null;
+    const sid = sel ? (sel.value || null) : null;
+    // собрать заказ без швеи нельзя: нужна швея или «Без пошива» (отменяет решение Р8)
+    if (!sid){ alert('Выберите швею или «Без пошива» — без этого заказ не собирается.'); return; }
     pushUndo(`сборка заказа №${num}`, num);
     c.seamstressId = sid;
-    if (sid && isNoSew(sid)){
+    if (isNoSew(sid)){
       // решение Р9: пошив не требуется — сразу «Готов к выдаче», минуя «Собран» и «В пошиве»
       c.skippedSewing = true; c.manual = 'ready_to_issue';
       log(c, `${verb('Собрал','Собрала')} заказ. Пошив не требуется — сразу готов к выдаче.`,'assemble');
     } else {
       c.skippedSewing = false; c.manual = 'assembled';
-      log(c, `${verb('Собрал','Собрала')} заказ. ` +
-             (sid ? `Швея: ${seamName(sid)}.` : 'Швея не назначена.'),'assemble');
+      log(c, `${verb('Собрал','Собрала')} заказ. Швея: ${seamName(sid)}.`,'assemble');
+    }
+    render();
+  },
+  /* назначение швеи чеку, который раньше собрали без неё (только если швеи нет) */
+  assignPick(num){
+    const sel = document.getElementById('asg-'+num);
+    const btn = document.getElementById('asgbtn-'+num);
+    if (btn) btn.disabled = !(sel && sel.value);
+  },
+  assignSeam(num){
+    const c = byNum(num);
+    if (!c || c.seamstressId || !isPostAssembly(c)) return;
+    const sel = document.getElementById('asg-'+num);
+    const sid = sel ? (sel.value || null) : null;
+    if (!sid){ alert('Выберите швею или «Без пошива».'); return; }
+    pushUndo(`назначение швеи в чеке №${num}`, num);
+    c.seamstressId = sid;
+    if (isNoSew(sid)){
+      // пошив не нужен — чек сразу переходит в «Готов к выдаче», как при сборке
+      c.skippedSewing = true;
+      const was = stageOf(c);
+      c.manual = 'ready_to_issue';
+      log(c, `${verb('Указал','Указала')}: пошив не требуется.` +
+             (was !== 'ready_to_issue' ? ' Заказ сразу готов к выдаче.' : ''), 'assign_seam');
+    } else {
+      c.skippedSewing = false;
+      log(c, `${verb('Назначил','Назначила')} швею: ${seamName(sid)}.`, 'assign_seam');
     }
     render();
   },
@@ -1843,12 +1881,22 @@ function actionsHTML(c){
   if (stg==='ready_to_assemble'){
     const loads = sewingLoad();
     a += `<div class="sewrow"><span>Швея:</span>
-            <select id="sew-${c.num}"><option value="">Швея не выбрана</option>`
+            <select id="sew-${c.num}" onchange="act.sewPick('${c.num}')"><option value="">Швея не выбрана</option>`
         + loads.map(l => `<option value="${l.id}">${esc(l.name)} — в пошиве: ${l.act}${l.act ? ' / ' + l.actM + ' м' : ''} · сшито: ${l.done}</option>`).join('')
         + `<option value="${NO_SEW_ID}">Без пошива — заказ сразу готов к выдаче</option>`
         + `</select></div>
           <div class="hint">Список — от наименее загруженной. «В пошиве» — чеки у швеи прямо сейчас; «сшито» — завершённые за всё время.</div>
-          <button class="primary" onclick="act.assemble('${c.num}')">Собрать заказ</button>`;
+          <button class="primary" id="asm-${c.num}" disabled onclick="act.assemble('${c.num}')">Собрать заказ</button>
+          <div class="hint" id="asm-hint-${c.num}" style="color:#B26A00">Чтобы собрать заказ, выберите швею или «Без пошива».</div>`;
+  }
+  // чек собран раньше без швеи — даём назначить её сейчас
+  if (isPostAssembly(c) && !c.seamstressId){
+    a += `<div class="sewrow"><span>⚠️ Швея:</span>
+            <select id="asg-${c.num}" onchange="act.assignPick('${c.num}')"><option value="">Швея не назначена</option>`
+        + sewingLoad().map(l => `<option value="${l.id}">${esc(l.name)} — в пошиве: ${l.act}</option>`).join('')
+        + `<option value="${NO_SEW_ID}">Без пошива — заказ сразу готов к выдаче</option>`
+        + `</select></div>
+          <button class="ghost" id="asgbtn-${c.num}" disabled onclick="act.assignSeam('${c.num}')">Назначить швею</button>`;
   }
   if (stg==='assembled')      a += `<button class="primary" onclick="act.toSewing('${c.num}')">Передан в пошив</button>`;
   if (stg==='in_sewing')      a += `<button class="primary" onclick="act.ready('${c.num}')">Заказ готов</button>`;
@@ -1973,7 +2021,8 @@ function sewLineHTML(c, stg){
   }
   if (stg === 'ready_to_assemble')                          // пора выбрать — бледное напоминание
     return {html:`<span class="csew none">швея не назначена</span>`, color:null};
-  // собран, в пошиве, готов к выдаче — швеи нет: предупреждающий маркер без текста (решение Р8)
+  // собран, в пошиве, готов к выдаче — швеи нет (старые чеки, до запрета сборки без швеи):
+  // предупреждающий маркер; назначить швею можно в раскрытой карточке
   return {html:`<span class="csew"><span class="warn" title="Швея не назначена">\u26A0\uFE0F</span></span>`, color:null};
 }
 
