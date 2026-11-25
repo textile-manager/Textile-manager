@@ -245,6 +245,15 @@ button.danger{background:transparent; color:var(--st-red); border:1px solid var(
 .formtitle{font-weight:600; font-size:14px;}
 .err{color:var(--st-red); font-size:13.5px;}
 .stockhint{font-size:12.5px; color:var(--muted);}
+/* подсказки маркировки: список сужается по мере ввода */
+.suglist{border:1px solid var(--line); border-radius:10px; background:#fff; max-height:232px; overflow-y:auto;
+  -webkit-overflow-scrolling:touch; margin-top:6px; box-shadow:0 4px 14px rgba(0,0,0,.08);}
+.addform .suglist{margin-top:-4px;}
+.suglist .sug{padding:11px 12px; min-height:44px; font-size:14.5px; border-bottom:1px solid var(--line); cursor:pointer; word-break:break-word;}
+.suglist .sug:last-child{border-bottom:0;}
+.suglist .sug.on, .suglist .sug:active{background:#F0F1EA;}
+.suglist .sug b{font-weight:700; background:#FFF3C4; border-radius:3px;}
+.suglist .sugnote{padding:11px 12px; font-size:13.5px; color:var(--muted);}
 
 /* замена позиции (раздел 37) */
 .item.repl{background:rgba(109,27,54,.045); border-left:3px solid var(--st-wine); padding-left:8px;}
@@ -414,7 +423,7 @@ button.danger{background:transparent; color:var(--st-red); border:1px solid var(
 
 <header>
   <div class="brandrow">
-    <h1>Textile Manager<span>2.6</span></h1>
+    <h1>Textile Manager<span>2.6.1</span></h1>
     <div class="hright">
       <button class="undobtn" id="undoBtn" title="Отменить последнее действие" aria-label="Отменить последнее действие">↶</button>
       <div class="userbox" id="whoBox"></div>
@@ -493,7 +502,6 @@ button.danger{background:transparent; color:var(--st-red); border:1px solid var(
   </div>
 </div>
 
-<datalist id="markList"></datalist>
 <input type="file" id="importFile" accept="application/json" style="display:none">
 <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" style="display:none">
 
@@ -1808,7 +1816,7 @@ function itemRow(c, it, editable){
   if (ui.editFor.has(it.id) && !isReplaced){
     html += `<div class="editform">
       <div class="formtitle">Изменить позицию</div>
-      <input id="ed-mark-${it.id}" list="markList" value="${esc(it.mark)}" placeholder="Маркировка" autocomplete="off">
+      <input id="ed-mark-${it.id}" data-sug="1" value="${esc(it.mark)}" placeholder="Маркировка" autocomplete="off">
       <div class="row">
         <input class="qty" id="ed-qty-${it.id}" inputmode="decimal" value="${it.qty}" placeholder="Кол-во">
         <select class="unit" id="ed-unit-${it.id}">
@@ -1826,7 +1834,7 @@ function itemRow(c, it, editable){
     const others = STORES.filter(x => x.active && x.id !== c.store);
     html += `<div class="replform">
       <div class="formtitle">Замена «${esc(it.mark)}» — новая ткань</div>
-      <input id="rp-mark-${it.id}" list="markList" placeholder="Маркировка — начните вводить"
+      <input id="rp-mark-${it.id}" data-sug="1" placeholder="Маркировка — начните вводить"
              oninput="act.replFieldsChanged('${it.id}')" autocomplete="off">
       <div class="stockhint" id="rp-hint-${it.id}"></div>
       <div class="row">
@@ -1921,7 +1929,7 @@ function addFormHTML(c){
   const others = STORES.filter(s=>s.active && s.id!==c.store);
   return `<div class="addform">
     <div class="formtitle">Новая позиция</div>
-    <input id="a-mark-${c.num}" list="markList" placeholder="Маркировка — начните вводить"
+    <input id="a-mark-${c.num}" data-sug="1" placeholder="Маркировка — начните вводить"
            oninput="act.addFieldsChanged('${c.num}')" autocomplete="off">
     <div class="stockhint" id="a-hint-${c.num}"></div>
     <div class="row">
@@ -2514,9 +2522,8 @@ function render(){
   document.getElementById('searchrow').style.display = (tab==='stats'||tab==='admin') ? 'none' : 'flex';
   document.getElementById('search').placeholder = tab==='checks' ? 'Поиск: номер, маркировка, клиент' : 'Поиск товара';
   document.getElementById('chips').innerHTML = chipsHTML();
-  document.getElementById('markList').innerHTML =
-    [...new Set([ ...products.map(p=>p.name), ...checks.flatMap(c=>c.items.map(i=>i.mark)) ])]
-      .sort((a,b)=>a.localeCompare(b,'ru')).map(n=>`<option value="${esc(n)}">`).join('');
+  markNames = [...new Set([ ...products.map(p=>p.name), ...checks.flatMap(c=>c.items.map(i=>i.mark)) ])]
+      .sort((a,b)=>a.localeCompare(b,'ru'));
   document.getElementById('list').innerHTML =
     tab==='checks' ? (listMode==='seam' ? seamView() : checksView()) : tab==='products' ? productsView() :
     tab==='stats' ? statsView() : adminView();
@@ -2725,6 +2732,74 @@ function fatal(msg){
   box.textContent = msg; box.style.display = 'block';
   document.getElementById('loginBtn').disabled = true;
 }
+
+/* ── подсказки маркировки ──
+   Свой выпадающий список вместо datalist: показывает только наименования,
+   содержащие введённый текст (в любом месте, без учёта регистра), и сужается
+   с каждой буквой. Пустое поле — списка нет. Нет совпадений — «Товары не найдены»
+   (новое наименование при этом по-прежнему можно добавить). */
+let markNames = [];
+const SUG_MAX = 50;
+const sug = { box:null, input:null, items:[], idx:-1 };
+function sugClose(){ if (sug.box) sug.box.remove(); sug.input = null; sug.items = []; sug.idx = -1; }
+function sugRender(){
+  const inp = sug.input; if (!inp) return;
+  const raw = inp.value.trim(), q = raw.toLowerCase();
+  if (!q){ sugClose(); return; }
+  const hit = markNames.filter(n => n.toLowerCase().includes(q));
+  // сначала те, что начинаются с введённого, затем совпадения внутри названия
+  hit.sort((a,b) => (a.toLowerCase().startsWith(q)?0:1) - (b.toLowerCase().startsWith(q)?0:1));
+  // единственное совпадение, уже введённое целиком, — подсказывать нечего
+  if (hit.length===1 && hit[0].toLowerCase()===q){ sugClose(); sug.input = inp; return; }
+  sug.items = hit.slice(0, SUG_MAX); sug.idx = -1;
+  if (!sug.box){ sug.box = document.createElement('div'); sug.box.className = 'suglist'; }
+  sug.box.innerHTML = !hit.length
+    ? '<div class="sugnote">Товары не найдены</div>'
+    : sug.items.map((n,i) => {
+        const at = n.toLowerCase().indexOf(q);
+        return `<div class="sug" data-i="${i}">${esc(n.slice(0,at))}<b>${esc(n.slice(at,at+q.length))}</b>${esc(n.slice(at+q.length))}</div>`;
+      }).join('') + (hit.length > SUG_MAX
+        ? `<div class="sugnote">Показаны первые ${SUG_MAX} из ${hit.length} — уточните запрос</div>` : '');
+  if (inp.nextElementSibling !== sug.box) inp.insertAdjacentElement('afterend', sug.box);
+  sug.box.scrollTop = 0;
+}
+function sugPick(i){
+  const inp = sug.input, name = sug.items[i]; if (!inp || name==null) return;
+  inp.value = name;
+  sugClose();
+  inp.dispatchEvent(new Event('input', {bubbles:true}));   // обновить ед. изм. и остатки
+  sugClose();
+  const qty = document.getElementById(inp.id.replace('-mark-','-qty-'));
+  if (qty){ qty.focus(); if (qty.select) qty.select(); }
+}
+document.addEventListener('input', e => {
+  const t = e.target; if (!t.matches || !t.matches('input[data-sug]')) return;
+  sug.input = t; sugRender();
+});
+document.addEventListener('focusin', e => {
+  const t = e.target;
+  if (t.matches && t.matches('input[data-sug]')){ if (sug.input !== t){ sugClose(); sug.input = t; } return; }
+  if (sug.box && sug.box.contains(t)) return;
+  sugClose();
+});
+document.addEventListener('click', e => {
+  const row = e.target.closest ? e.target.closest('.suglist .sug') : null;
+  if (row){ sugPick(+row.dataset.i); return; }
+  if (sug.box && !sug.box.contains(e.target) && e.target !== sug.input) sugClose();
+});
+document.addEventListener('keydown', e => {
+  if (!sug.box || !sug.box.isConnected || e.target !== sug.input) return;
+  if (e.key==='Escape'){ sugClose(); return; }
+  if (!sug.items.length) return;
+  if (e.key==='ArrowDown' || e.key==='ArrowUp'){
+    e.preventDefault();
+    const n = sug.items.length;
+    sug.idx = e.key==='ArrowDown' ? (sug.idx+1)%n : (sug.idx<=0 ? n-1 : sug.idx-1);
+    sug.box.querySelectorAll('.sug').forEach((el,i) => { el.classList.toggle('on', i===sug.idx);
+      if (i===sug.idx) el.scrollIntoView({block:'nearest'}); });
+  } else if (e.key==='Enter' && sug.idx>=0){ e.preventDefault(); sugPick(sug.idx); }
+});
+
 
 (async function boot(){
   showLogin();
